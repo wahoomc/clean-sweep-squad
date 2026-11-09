@@ -210,6 +210,21 @@ canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:50;width:100%;heigh
 .phow i{width:46px;height:46px;border-radius:12px;display:grid;place-items:center;background:var(--gold);color:var(--ink);border:3px solid var(--ink);transform:rotate(-4deg)}
 .phow i svg{width:24px;height:24px}
 .rules li{margin-bottom:6px}
+/* Sync + logins */
+#gate{position:fixed;inset:0;z-index:15;overflow-y:auto;background:var(--bg);background-image:inherit}
+.gatebox{max-width:560px;margin:0 auto;padding:40px max(16px,env(safe-area-inset-left,0px)) 60px;display:flex;flex-direction:column;gap:18px}
+.gatebox .who{grid-template-columns:repeat(auto-fill,minmax(110px,1fr))}
+.gatebox .who button small{font-size:.75rem;color:var(--muted);font-weight:600}
+.approvals{border-color:var(--gold);border-width:3px}
+.approvals .log li{align-items:center;flex-wrap:wrap}
+.approvals .log li>span:first-child{font-variant-numeric:normal;font-weight:500;white-space:normal}
+.apbtns{display:flex;gap:6px}
+.apbtns .btn{padding:7px 14px;font-size:.95rem}
+.setrow{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.setrow small{color:var(--muted);font-weight:500}
+.status{font-size:.8rem;font-weight:700;padding:2px 9px;border-radius:999px;background:var(--good);color:#fff}
+.status.wait{background:var(--gold);color:#3a2a00}
+.sync{font-size:.8rem;color:var(--muted);font-weight:600}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 
@@ -217,9 +232,9 @@ canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:50;width:100%;heigh
   <header>
     <div>
       <h1>Clean Sweep <span>Squad</span></h1>
-      <p class="sub">Cadets report for duty. Missions earn stars.</p>
+      <p class="sub" id="sub">Cadets report for duty. Missions earn stars.</p>
     </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="toggle" id="helpBtn" aria-pressed="false">How to play</button><button class="toggle" id="parentBtn" aria-pressed="false">Parent mode</button></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="toggle" id="helpBtn" aria-pressed="false">How to play</button><button class="toggle" id="parentBtn" aria-pressed="true" hidden>Parent tools: on</button><button class="toggle" id="meBtn">Log out</button></div>
   </header>
   <div class="squad" id="strip"></div>
   <nav role="tablist">
@@ -227,9 +242,10 @@ canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:50;width:100%;heigh
     <button role="tab" data-tab="squad" aria-selected="false">Squad</button>
     <button role="tab" data-tab="px" aria-selected="false">Store</button>
   </nav>
-  <div class="pbar" id="pbar" hidden><span><b>Parent mode is on.</b> Kids, hands off!</span><span style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost" id="pinChange">Change PIN</button><button class="btn" id="tutBtn"><span class="pi"></span>Watch the parent tutorial</button></span></div>
+  <div class="pbar" id="pbar" hidden><span><b>Parent tools are on.</b> Edit missions, rewards and PINs.</span><span style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost" id="pinChange">Squad settings</button><button class="btn" id="tutBtn"><span class="pi"></span>Watch the parent tutorial</button></span></div>
   <main id="view"></main>
 </div>
+<div id="gate" hidden></div>
 <div id="sheetRoot"></div>
 <canvas id="fx"></canvas>
 
@@ -292,10 +308,12 @@ if(!(S.names>=2)){const EM={a:"mic",b:"book",c:"soccer"};S.kids.forEach(k=>{if(E
 if(!(S.v>=3)){[["Mow the yard",30],["Tidy the living room",15],["Tidy the dining room",15],["Clean the downstairs toilet",20],["Clean the upstairs toilet",20],["Clean the door knobs",10],["Dry mop downstairs",15],["Wipe the stairs",15]].forEach(([n,x],i)=>{if(!S.chores.some(c=>c.name===n))S.chores.push({id:"h2_"+i,name:n,xp:x})});S.v=3;try{localStorage.setItem("cleansweep",JSON.stringify(S))}catch(e){}}
 const AREAS=[["Upstairs","up"],["Downstairs","down"],["Outside","sun"]];
 const guessArea=n=>{n=n.toLowerCase();if(/upstairs|bed|bathroom|room inspection|laundry/.test(n))return"Upstairs";if(/outside|yard|mow|rake|leaves|shovel|driveway|garage|trash/.test(n))return"Outside";return"Downstairs"};
-S.chores.forEach(c=>{if(!c.area)c.area=guessArea(c.name);if(c.kid===undefined)c.kid=null});
+const fixChores=()=>S.chores.forEach(c=>{if(!c.area)c.area=guessArea(c.name);if(c.kid===undefined)c.kid=null});fixChores();
+const LOCAL=structuredClone(S);S.pending=[];S.settings={approve:true};
 let parent=false,tab="missions",who=null,editing=null;
-const save=()=>{try{localStorage.setItem("cleansweep",JSON.stringify(S))}catch(e){}};
-const today=()=>{const d=new Date();return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate()};
+const isParent=()=>!!(me&&me.role==="parent");
+let saveT=null;const save=()=>{clearTimeout(saveT);saveT=setTimeout(saveConfig,250)};
+const today=()=>{const p=new Intl.DateTimeFormat("en-US",{timeZone:"America/Indiana/Indianapolis",year:"numeric",month:"numeric",day:"numeric"}).formatToParts(new Date()),g=t=>p.find(x=>x.type===t).value;return g("year")+"-"+g("month")+"-"+g("day")};
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const rankOf=xp=>{let i=0;RANKS.forEach((r,j)=>{if(xp>=r[0])i=j});return i};
 const kidStyle=k=>`style="--kid:${k.color}"`;
@@ -307,6 +325,8 @@ function strip(){
   document.getElementById("strip").innerHTML=S.kids.map(k=>`<div class="mini" ${kidStyle(k)}><span class="em">${svg(k.emblem)}</span><span class="n">${esc(k.name)}</span><span class="r">${RANKS[rankOf(k.xp)][1]}</span><span class="s"><span class="star">★</span> ${k.stars}</span></div>`).join("");
 }
 function render(){
+  if(!me)return;
+  header();
   strip();
   document.querySelectorAll("nav button").forEach(b=>b.setAttribute("aria-selected",b.dataset.tab===tab));
   document.getElementById("helpBtn").setAttribute("aria-pressed",tab==="about");
@@ -321,7 +341,7 @@ function render(){
      <div class="about"><h2>Running a mission</h2><ol class="steps">
       <li><b class="num">1</b><span><b>Do the job for real.</b> All the way, done right. A bed with the blanket thrown on top doesn't count.</span></li>
       <li><b class="num">2</b><span><b>Tap it on the Mission Board.</b> Find the chore you finished and tap it.</span></li>
-      <li><b class="num">3</b><span><b>Tap your name.</b> The stars go straight to you. Watch for confetti.</span></li>
+      <li><b class="num">3</b><span><b>Tap your name.</b> Mom or Dad gets a note to check your work. When they approve it, the stars are yours. Watch for confetti.</span></li>
      </ol>
      <p>You can get stars for each mission <b>once a day</b>. Making your bed five times in a row won't work. Nice try, though.</p></div>
      <div class="about"><h2>The Special Mission ×2</h2><p>The big colorful mission at the top of the board pays <b>double stars</b>. It changes every day, so check it each morning. Finishing one earns you the Double Duty patch, too.</p></div>
@@ -329,7 +349,7 @@ function render(){
       <ul class="ladder">${RANKS.map(r=>`<li><span>${r[1]}</span><small>${r[0]} ★</small></li>`).join("")}</ul></div>
      <div class="about"><h2>Collect your patches</h2><p>Patches are badges you keep forever. They show up on your card in the Squad tab.</p>
       <div class="phow">${PATCHES.map(p=>`<div><i>${svg(p[2])}</i><span><b>${p[1]}</b><br><small>${PATCH_HOW[p[0]]}</small></span></div>`).join("")}</div></div>
-     <div class="about"><h2>The Squad Store</h2><p>Spend your stars on rewards like screen time, picking dinner, or a date with Mom or Dad. <b>Show a parent before you tap buy.</b> And don't worry: spending stars never lowers your rank. Your promotions are yours to keep.</p></div>
+     <div class="about"><h2>The Squad Store</h2><p>Spend your stars on rewards like screen time, picking dinner, or a date with Mom or Dad. <b>Mom or Dad approves every reward</b> before the stars come off. And don't worry: spending stars never lowers your rank. Your promotions are yours to keep.</p></div>
      <div class="about"><h2>Squad rules</h2><ul class="steps rules" style="gap:6px">
       <li><b class="num" style="background:var(--good)">${svg("check")}</b><span><b>Honesty first.</b> Only tap missions you really finished. Mom and Dad can see the log and undo anything.</span></li>
       <li><b class="num" style="background:var(--good)">${svg("check")}</b><span><b>Done means done right.</b> If a parent says it needs another try, finish it, then claim it.</span></li>
@@ -341,8 +361,9 @@ function render(){
   }else if(tab==="missions"){
     const m=motd(),vis=S.chores.filter(c=>(parent||!c.off)&&(!who||!c.kid||c.kid===who));
     const kidOf=id=>id&&S.kids.find(k=>k.id===id);
-    const card=c=>{const k=kidOf(c.kid);return `<button class="card${k?" mine":""}${c.off?" off":""}" data-chore="${c.id}" ${k?kidStyle(k):""}><span class="t">${esc(c.name)}</span><span class="cardfoot"><span class="pill">+${c.xp} ★</span>${k?`<span class="tag"><span class="em">${svg(k.emblem)}</span>${esc(k.name)}</span>`:""}</span>${parent?`<span class="cardctl"><span class="tgl" data-toggle="${c.id}" role="switch" aria-checked="${!c.off}" aria-label="Mission on or off"><i></i><b>${c.off?"Off":"On"}</b></span><span class="del" data-editchore="${c.id}" role="button">Edit</span></span>`:""}</button>`};
+    const card=c=>{const k=kidOf(c.kid);return `<button class="card${k?" mine":""}${c.off?" off":""}" data-chore="${c.id}" ${k?kidStyle(k):""}><span class="t">${esc(c.name)}</span><span class="cardfoot"><span class="pill">+${c.xp} ★</span>${me.role==="kid"&&S.done[doneKey(me.id,c.id)]?(S.done[doneKey(me.id,c.id)]==="p"?`<span class="status wait">Waiting</span>`:`<span class="status">Done ✓</span>`):""}${k?`<span class="tag"><span class="em">${svg(k.emblem)}</span>${esc(k.name)}</span>`:""}</span>${parent?`<span class="cardctl"><span class="tgl" data-toggle="${c.id}" role="switch" aria-checked="${!c.off}" aria-label="Mission on or off"><i></i><b>${c.off?"Off":"On"}</b></span><span class="del" data-editchore="${c.id}" role="button">Edit</span></span>`:""}</button>`};
     v.innerHTML=`<section>
+     ${pendingBox()}
      ${m&&vis.includes(m)?`<button class="motd" data-chore="${m.id}" data-x2="1"><div><p class="eyebrow">Today's special mission</p><div class="t">${esc(m.name)}</div><small>${m.xp*2} stars · double today only${kidOf(m.kid)?` · ${esc(kidOf(m.kid).name)}'s mission`:""}</small></div><span class="x2">×2</span></button>`:""}
      <div><p class="eyebrow" style="margin-bottom:8px">Show missions for</p><div class="chips"><button class="chip" data-who="" aria-pressed="${!who}">Everyone</button>${S.kids.map(k=>`<button class="chip" data-who="${k.id}" ${kidStyle(k)} aria-pressed="${who===k.id}"><span class="em">${svg(k.emblem)}</span>${esc(k.name)}</button>`).join("")}</div></div>
      ${AREAS.map(([a,ic])=>{const list=vis.filter(c=>c.area===a);return list.length?`<div class="area"><h3 class="areah"><span class="aic">${svg(ic)}</span>${a}<small>${list.length} mission${list.length>1?"s":""}</small></h3><div class="grid">${list.map(card).join("")}</div></div>`:""}).join("")}
@@ -390,32 +411,142 @@ function editChore(id){
    <label>Assigned to<select id="ek"><option value="">Anyone</option>${S.kids.map(k=>`<option value="${k.id}" ${k.id===c.kid?"selected":""}>${esc(k.name)} only</option>`).join("")}</select></label></div>
    <div class="addform"><button class="btn" id="saveChore">Save</button><button class="btn ghost" id="delChore">Remove mission</button><button class="btn ghost" data-close style="border-color:var(--line);color:var(--muted)">Cancel</button></div>`);
 }
-// ---------- Parent PIN ----------
-const RECOVERY="731958";
-const pinHash=p=>[..."cs:"+p].reduce((h,c)=>(h*33+c.charCodeAt(0))>>>0,5381).toString(36);
-let pinMode=null,pinBuf="",pinFirst="";
-function setParent(on){parent=on;const b=document.getElementById("parentBtn");b.setAttribute("aria-pressed",on);b.textContent=on?"Parent mode: on":"Parent mode";render()}
-const PIN_TEXT={enter:["Parent mode","Enter your 4-digit PIN"],set1:["Set a parent PIN","Pick 4 digits the kids don't know"],set2:["Confirm your PIN","Type the same 4 digits again"],recover:["Recovery code","Enter the 6-digit recovery code"]};
+// ---------- Family sync: every device shares one scoreboard ----------
+let TOKEN=null;try{TOKEN=localStorage.getItem("css_token")}catch(e){}
+let me=null,REV=0,PINS={},ROSTER=[],waitRender=false;
+const PARENT_LIST=[{id:"dad",name:"Dad",color:"#1d2a4a",emblem:"shield",role:"parent"},{id:"mom",name:"Mom",color:"#f5487f",emblem:"heart",role:"parent"}];
+const people=()=>[...S.kids.map(k=>({id:k.id,name:k.name,color:k.color,emblem:k.emblem,role:"kid"})),...PARENT_LIST];
+const pendingCost=kid=>(S.pending||[]).filter(p=>p.kid===kid&&p.type==="buy").reduce((a,p)=>a+p.cost,0);
+function setToken(t){TOKEN=t;try{t?localStorage.setItem("css_token",t):localStorage.removeItem("css_token")}catch(e){}}
+async function api(path,body){
+  let r;
+  try{r=await fetch("/api/"+path,{method:body?"POST":"GET",headers:{"content-type":"application/json",...(TOKEN?{authorization:"Bearer "+TOKEN}:{})},body:body?JSON.stringify(body):undefined,cache:"no-store"})}
+  catch(e){throw new Error("Can't reach the Squad. Check the Wi-Fi and try again.")}
+  let j={};try{j=await r.json()}catch(e){}
+  if(r.status===401&&TOKEN&&!["login","setup"].includes(path)){signedOut();throw new Error("signed out")}
+  if(!r.ok)throw Object.assign(new Error(j.error||"Something went wrong. Try again."),{status:r.status});
+  return j;
+}
+function take(j){if(j.token)setToken(j.token);if(j.state){S=j.state;REV=j.rev;fixChores()}if(j.me)me=j.me;if(j.pins)PINS=j.pins}
+const typing=()=>{const a=document.activeElement;return a&&/INPUT|SELECT|TEXTAREA/.test(a.tagName)&&a.closest("#view")};
+const busyScreen=()=>document.getElementById("scrim")||document.querySelector(".promo");
+async function act(type,data){
+  try{const j=await api("act",{type,...(data||{})});const old=S;take(j);render();notice(old,true);return j}
+  catch(e){if(e.message!=="signed out")toast(e.message);refresh(true);return null}
+}
+function saveConfig(){act("config",{config:{kids:S.kids.map(({id,name,color,emblem})=>({id,name,color,emblem})),chores:S.chores,rewards:S.rewards}})}
+async function refresh(force){
+  if(!TOKEN||!me||(document.hidden&&!force))return;
+  try{const j=await api("state"+(force?"":"?since="+REV));if(j.same)return;const old=S;take(j);
+    if(typing()||busyScreen())waitRender=true;else render();notice(old,false)}catch(e){}
+}
+setInterval(refresh,12000);
+setInterval(()=>{if(waitRender&&!typing()&&!busyScreen()){waitRender=false;render()}},1000);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)refresh()});
+// Let a kid know when Mom or Dad approves (or sends back) one of their missions
+function notice(old,mine){
+  if(!old||!old.log||!me)return;
+  const top=Math.max(0,...old.log.map(l=>l.id||0));
+  const fresh=S.log.filter(l=>(l.id||0)>top).reverse();
+  if(me.role==="kid"){
+    const k=S.kids.find(k=>k.id===me.id),ok=old.kids.find(k=>k.id===me.id);if(!k||!ok)return;
+    fresh.filter(l=>l.kid===me.id&&l.by&&l.by!==me.name).forEach(l=>{
+      if(l.no)toast(`${l.by} says not yet: ${l.text.replace(/^[^:]+: /,"").replace(/ \(not yet\)$/,"")}`);
+      else{toast(l.d>=0?`${l.by} approved it! +${l.d} ★`:`${l.by} approved: ${l.text.replace(/^.+ got: /,"")}`);burst(60,k.color)}
+    });
+    const next=cheers(k,rankOf(ok.xp),PATCHES.filter(p=>p[3](ok)).length);if(next&&!mine)next();
+  }else if(!mine){
+    const n=(S.pending||[]).length,o=(old.pending||[]).length;
+    if(n>o)toast(n===1?"1 mission is waiting for your approval":`${n} missions are waiting for your approval`);
+  }
+}
+function header(){
+  document.getElementById("sub").textContent=me.role==="kid"?`Reporting for duty: ${me.name}`:`Logged in as ${me.name}`;
+  const pb=document.getElementById("parentBtn");pb.hidden=!isParent();pb.setAttribute("aria-pressed",parent);pb.textContent=parent?"Parent tools: on":"Parent tools: off";
+  document.getElementById("meBtn").textContent=`${me.name} · Log out`;
+}
+function pendingBox(){
+  const list=(S.pending||[]).filter(p=>isParent()||p.kid===me.id);if(!list.length)return"";
+  return `<div class="about approvals"><p class="eyebrow">${isParent()?`Waiting for your approval · ${list.length}`:"Waiting on Mom or Dad"}</p><ul class="log">${list.map(p=>{const k=S.kids.find(k=>k.id===p.kid);
+    return `<li><span>${k&&isParent()?`<b>${esc(k.name)}</b>: `:""}${p.type==="buy"?"Store: ":""}${esc(p.name)} <b class="${p.type==="buy"?"minus":"plus"}">${p.type==="buy"?`−${p.cost}`:`+${p.pts}`} ★</b></span>${isParent()?`<span class="apbtns"><button class="btn" data-approve="${p.id}">Approve</button><button class="btn ghost" data-deny="${p.id}">Not yet</button></span>`:`<span class="sync">waiting…</span>`}</li>`}).join("")}</ul></div>`;
+}
+async function buyIt(kidId,rewardId){
+  closeSheet();const k0=S.kids.find(k=>k.id===kidId);if(!k0)return;const had=PATCHES.filter(p=>p[3](k0)).length;
+  const j=await act("buy",{kid:kidId,reward:rewardId});if(!j)return;
+  const r=S.rewards.find(r=>r.id===rewardId)||{name:"your reward"},k=S.kids.find(k=>k.id===kidId);
+  if(j.result.status==="pending"){toast(`Sent to Mom and Dad: ${r.name}`);return}
+  if(PATCHES.filter(p=>p[3](k)).length>had)celebrate(k,`<div class="big-em" style="background:var(--gold);color:var(--ink)">${svg("bag")}</div>`,"New patch!",`${esc(k.name)} earned “First Reward”`);
+  else toast(`${k.name} cashed in: ${r.name}`);
+}
+function settingsSheet(){
+  sheet(`<p class="eyebrow">Grown-ups only</p><h2>Squad settings</h2>
+   <div class="setrow"><span><b>Parent approval</b><br><small>Kids' missions and store buys wait for Mom or Dad before stars move.</small></span><span class="tgl" id="apTgl" role="switch" tabindex="0" aria-checked="${!!S.settings.approve}"><i></i><b>${S.settings.approve?"On":"Off"}</b></span></div>
+   <p class="eyebrow" style="margin-top:6px">Login PINs</p>
+   <div>${people().map(p=>`<div class="setrow"><span><b>${esc(p.name)}</b><br><small>${PINS[p.id]?"PIN is set":"No PIN yet, can't log in"}</small></span><button class="btn ghost" data-setpin="${p.id}">${PINS[p.id]?"Change PIN":"Set PIN"}</button></div>`).join("")}</div>
+   <p class="note">Kids log in with their own PIN on their Chromebook. If you and Mom both forget yours, the PINs can be reset from Cloudflare.</p>
+   <button class="btn ghost" data-close>Done</button>`);
+}
+// ---------- Login screen ----------
+const gate=()=>document.getElementById("gate");
+function signedOut(){setToken(null);me=null;closeSheet();showGate()}
+async function logout(){try{await api("logout",{})}catch(e){}signedOut()}
+function hideGate(){gate().hidden=true;gate().innerHTML=""}
+async function showGate(msg){
+  const g=gate();g.hidden=false;
+  g.innerHTML=`<div class="gatebox"><h1>Clean Sweep <span>Squad</span></h1><p class="sub" id="gateMsg">${msg||"Loading the Squad…"}</p></div>`;
+  let ro;try{ro=await api("roster")}catch(e){document.getElementById("gateMsg").textContent=e.message;return}
+  if(!ro.setup){
+    g.querySelector(".gatebox").insertAdjacentHTML("beforeend",`<div class="about"><p class="eyebrow">First time here</p><h2>Set up the Squad</h2>
+     <p>Dad, you're first. Pick a 4-digit PIN for yourself. After that, you'll set PINs for Mom and each kid.</p>
+     <p class="note">Names, missions and stars already saved on this device come along. Want a clean slate? Use “Reset all stars” in the Squad tab after setup.</p>
+     <button class="btn" id="setupBtn" style="align-self:flex-start">Set up the Squad</button></div>`);
+    document.getElementById("gateMsg").textContent="Missions earn stars. Stars earn rewards.";return;
+  }
+  ROSTER=ro.people;
+  document.getElementById("gateMsg").textContent="Who's reporting for duty?";
+  g.querySelector(".gatebox").insertAdjacentHTML("beforeend",`<div class="who">${ROSTER.map(p=>`<button data-login="${p.id}" style="--kid:${p.color}" ${p.hasPin?"":"disabled"}><span class="em">${svg(p.emblem)}</span><span>${esc(p.name)}</span>${p.hasPin?"":"<small>ask a parent for a PIN</small>"}</button>`).join("")}</div>`);
+}
+async function boot(){
+  if(!TOKEN){showGate();return}
+  try{const j=await api("state");take(j);hideGate();parent=isParent();if(me.role==="kid")who=me.id;render()}
+  catch(e){if(e.message!=="signed out")showGate(e.message)}
+}
+// ---------- PIN keypad (login, setup, and parents setting PINs) ----------
+let pinMode=null,pinBuf="",pinFirst="",pinTarget=null,pinCtx="login";
 function pinSheet(mode,msg){
-  pinMode=mode;pinBuf="";const len=mode==="recover"?6:4,[h,sub]=PIN_TEXT[mode];
-  sheet(`<p class="eyebrow">Grown-ups only</p><h2>${h}</h2><p class="note" id="pinMsg">${msg||sub}</p>
-   <div class="pindots" id="pinDots">${"<i></i>".repeat(len)}</div>
+  pinMode=mode;pinBuf="";const nm=esc(pinTarget?.name||"");
+  const txt={login:[`Hi, ${nm}!`,"Enter your 4-digit PIN"],
+   set1:[pinCtx==="setup"?"Pick your parent PIN":`New PIN for ${nm}`,pinCtx==="setup"?"4 digits the kids don't know":`Pick 4 digits ${nm} can remember`],
+   set2:["Type it again","Same 4 digits, one more time"]}[mode];
+  sheet(`<p class="eyebrow">${pinCtx==="login"?"Log in":"Grown-ups only"}</p><h2>${txt[0]}</h2><p class="note" id="pinMsg">${msg?esc(msg):txt[1]}</p>
+   <div class="pindots" id="pinDots">${"<i></i>".repeat(4)}</div>
    <div class="keypad">${[1,2,3,4,5,6,7,8,9].map(n=>`<button data-key="${n}">${n}</button>`).join("")}<span></span><button data-key="0">0</button><button data-key="back" aria-label="Delete">⌫</button></div>
-   <div class="addform" style="justify-content:space-between">${mode==="enter"?`<button class="btn ghost" id="pinForgot" style="border-color:var(--line);color:var(--muted)">Forgot PIN?</button>`:"<span></span>"}<button class="btn ghost" data-close>Cancel</button></div>`);
+   <div class="addform" style="justify-content:flex-end"><button class="btn ghost" data-close>Cancel</button></div>`);
   if(msg)document.getElementById("pinMsg").classList.add("err");
 }
 function pinKey(k){
-  const len=pinMode==="recover"?6:4;
-  if(k==="back")pinBuf=pinBuf.slice(0,-1);else if(pinBuf.length<len)pinBuf+=k;
+  if(k==="back")pinBuf=pinBuf.slice(0,-1);else if(pinBuf.length<4)pinBuf+=k;
   document.querySelectorAll("#pinDots i").forEach((d,i)=>d.classList.toggle("on",i<pinBuf.length));
-  if(pinBuf.length<len)return;
-  const v=pinBuf;setTimeout(()=>{
-    if(pinMode==="enter"){if(pinHash(v)===S.pinH){closeSheet();setParent(true)}else{pinSheet("enter","Wrong PIN. Try again.");shakePin()}}
-    else if(pinMode==="set1"){pinFirst=v;pinSheet("set2")}
-    else if(pinMode==="set2"){if(v===pinFirst){S.pinH=pinHash(v);save();closeSheet();setParent(true);toast("PIN saved. Parent mode unlocked.")}else{pinSheet("set1","Those didn't match. Start over.");shakePin()}}
-    else if(pinMode==="recover"){if(v===RECOVERY)pinSheet("set1","Recovery code accepted. Pick a new PIN.");else{pinSheet("recover","That code isn't right.");shakePin()}}
-  },150);
+  if(pinBuf.length<4)return;
+  const v=pinBuf;pinBuf="....";setTimeout(()=>pinDone(v),150);
 }
+async function pinDone(v){
+  if(pinMode==="login"){
+    try{const j=await api("login",{user:pinTarget.id,pin:v});take(j);closeSheet();hideGate();parent=isParent();tab="missions";who=me.role==="kid"?me.id:null;render();toast(`Welcome back, ${me.name}!`)}
+    catch(e){pinSheet("login",e.message);shakePin()}
+  }else if(pinMode==="set1"){pinFirst=v;pinSheet("set2")}
+  else if(pinMode==="set2"){
+    if(v!==pinFirst){pinSheet("set1","Those didn't match. Start over.");shakePin();return}
+    if(pinCtx==="setup"){
+      try{const j=await api("setup",{pin:v,state:LOCAL});take(j);closeSheet();hideGate();parent=true;render();settingsSheet();toast("The Squad is live! Now set PINs for Mom and the kids.")}
+      catch(e){closeSheet();showGate(e.message)}
+    }else{
+      try{const j=await api("pin",{user:pinTarget.id,pin:v});take(j);settingsSheet();toast(`${pinTarget.name}'s PIN is set`)}
+      catch(e){pinSheet("set1",e.message);shakePin()}
+    }
+  }
+}
+
 function shakePin(){const d=document.getElementById("pinDots");if(d){d.classList.remove("shake");void d.offsetWidth;d.classList.add("shake")}}
 function sheet(html){document.getElementById("sheetRoot").innerHTML=`<div class="scrim" id="scrim"><div class="sheet" role="dialog" aria-modal="true">${html}</div></div>`}
 function closeSheet(){document.getElementById("sheetRoot").innerHTML=""}
@@ -425,8 +556,8 @@ const whoBtn=(k,attr,dis,extra)=>`<button ${attr}="${k.id}" ${kidStyle(k)} ${dis
 function askWho(choreId,x2){
   const c=S.chores.find(c=>c.id===choreId);if(!c)return;
   const pts=c.xp*(x2?2:1);
-  sheet(`<p class="eyebrow">Mission complete!</p><h2>${esc(c.name)} · +${pts} ★</h2><p class="note">Who did it?</p>
-   <div class="who">${S.kids.map(k=>{const used=S.done[doneKey(k.id,c.id)];const notMine=c.kid&&c.kid!==k.id;return whoBtn(k,"data-award",used||notMine,used?"done today":notMine?"not assigned":"")}).join("")}</div>
+  sheet(`<p class="eyebrow">Mission complete?</p><h2>${esc(c.name)} · +${pts} ★</h2><p class="note">${isParent()?"Who did it?":"Did you finish it for real? Tap your name."}${!isParent()&&S.settings.approve?" Mom or Dad will approve it.":""}</p>
+   <div class="who">${S.kids.filter(k=>isParent()||k.id===me.id).map(k=>{const used=S.done[doneKey(k.id,c.id)];const notMine=c.kid&&c.kid!==k.id;return whoBtn(k,"data-award",used||notMine,used==="p"?"waiting":used?"done today":notMine?"not assigned":"")}).join("")}</div>
    <button class="btn ghost" data-close>Cancel</button>`);
   const s=document.getElementById("scrim");s.dataset.chore=choreId;s.dataset.pts=pts;s.dataset.x2=x2?"1":"";
 }
@@ -461,12 +592,12 @@ Object.assign(VSCENES,{
 });
 const vkind=n=>{n=n.toLowerCase();for(const[k,re] of [["bed",/bed/],["mow",/mow|lawn|grass/],["toilet",/toilet/],["mop",/mop/],["knob",/knob|door|handle/],["stairs",/stair/],["living",/living|couch|family room/],["dining",/dining/],["table",/table/],["dishes",/dish|plate/],["trash",/trash|garbage|recycl/],["laundry",/laundry|fold|clothes/],["vacuum",/vacuum|sweep|mop|floor/],["sink",/bath|sink|toilet|tub|mirror|wipe|wash/],["room",/room|toy|pick up|tidy/],["leaves",/leaf|leaves|rake|yard|mow/],["snow",/snow|shovel|driveway/],["garage",/garage|tool|fix|build|help/]])if(re.test(n))return k;return "trophy"};
 const VCHEER=["Mission complete!","Nailed it!","Outstanding!","Squad hero!","Crushed it!"];
-function victory(k,c,pts,x2,next){
+function victory(k,c,pts,x2,next,pending){
   const d=document.createElement("div");d.className="promo";
   d.innerHTML=`<div class="box" ${kidStyle(k)}><div class="vstage"><svg viewBox="0 0 300 200" aria-hidden="true">${VSCENES[vkind(c.name)]()}</svg></div>
    <div class="big">${VCHEER[Math.floor(Math.random()*VCHEER.length)]}</div>
    <div class="vline"><span class="em">${svg(k.emblem)}</span><b>${esc(k.name)}</b><span>${esc(c.name)}</span></div>
-   <div class="vstars">+<span class="vc">0</span> ★${x2?" <small style='font-size:1rem;color:var(--accent)'>double!</small>":""}</div>
+   <div class="vstars">+<span class="vc">0</span> ★${x2?" <small style='font-size:1rem;color:var(--accent)'>double!</small>":""}</div>${pending?`<p class="note" style="font-weight:700">Sent to Mom and Dad. Your stars land when they approve it.</p>`:""}
    <button class="btn">Awesome!</button></div>`;
   let closed=false;const close=()=>{if(closed)return;closed=true;d.remove();next&&next()};
   d.addEventListener("click",close);document.body.appendChild(d);burst(70,k.color);
@@ -474,17 +605,20 @@ function victory(k,c,pts,x2,next){
   (function count(now){const p=Math.min(1,(now-t0)/900);el.textContent=Math.round(pts*p);if(p<1&&!closed)requestAnimationFrame(count)})(t0);
   setTimeout(close,4200);
 }
-function award(kidId,choreId,pts,x2){
-  const k=S.kids.find(k=>k.id===kidId),c=S.chores.find(c=>c.id===choreId);
-  const before=rankOf(k.xp),patchesBefore=PATCHES.filter(p=>p[3](k)).length;
-  k.xp+=pts;k.stars+=pts;k.missions++;if(x2)k.x2++;S.done[doneKey(kidId,choreId)]=1;
-  S.log.unshift({kid:kidId,text:`${k.name}: ${c.name}`,d:pts,xp:pts,key:doneKey(kidId,choreId),x2:!!x2});
-  save();closeSheet();render();
+function award(kidId,choreId,pts,x2){claim(kidId,choreId,x2)}
+function cheers(k,before,patchesBefore){
   const after=rankOf(k.xp),newPatch=PATCHES.filter(p=>p[3](k)).length>patchesBefore;
-  let next=null;
-  if(after>before)next=()=>celebrate(k,`${insignia(after)}`,`Promoted!`,`${esc(k.name)} is now ${RANKS[after][1]}`);
-  else if(newPatch){const p=PATCHES.filter(p=>p[3](k)).pop();next=()=>celebrate(k,`<div class="big-em" style="background:var(--gold);color:var(--ink)">${svg(p[2])}</div>`,`New patch!`,`${esc(k.name)} earned “${p[1]}”`)}
-  victory(k,c,pts,x2,next);
+  if(after>before)return()=>celebrate(k,`${insignia(after)}`,`Promoted!`,`${esc(k.name)} is now ${RANKS[after][1]}`);
+  if(newPatch){const p=PATCHES.filter(p=>p[3](k)).pop();return()=>celebrate(k,`<div class="big-em" style="background:var(--gold);color:var(--ink)">${svg(p[2])}</div>`,`New patch!`,`${esc(k.name)} earned “${p[1]}”`)}
+  return null;
+}
+async function claim(kidId,choreId,x2){
+  closeSheet();
+  const k0=S.kids.find(k=>k.id===kidId);if(!k0)return;
+  const before=rankOf(k0.xp),pb=PATCHES.filter(p=>p[3](k0)).length;
+  const r=await act("claim",{kid:kidId,chore:choreId,x2:!!x2});if(!r)return;
+  const res=r.result,k=S.kids.find(k=>k.id===kidId),c=S.chores.find(c=>c.id===choreId)||{name:"Mission"};
+  victory(k,c,res.pts,res.x2,res.status==="pending"?null:cheers(k,before,pb),res.status==="pending");
 }
 function celebrate(k,icon,head,line){
   const d=document.createElement("div");d.className="promo";
@@ -493,8 +627,8 @@ function celebrate(k,icon,head,line){
 }
 function buy(rewardId){
   const r=S.rewards.find(r=>r.id===rewardId);
-  sheet(`<p class="eyebrow">Squad store</p><h2>${esc(r.name)} · ★ ${r.cost}</h2><p class="note">Who's cashing in? Show a parent first.</p>
-   <div class="who">${S.kids.map(k=>whoBtn(k,"data-buy",k.stars<r.cost,`★ ${k.stars}`)).join("")}</div>
+  sheet(`<p class="eyebrow">Squad store</p><h2>${esc(r.name)} · ★ ${r.cost}</h2><p class="note">${isParent()?"Who's cashing in?":"Want to cash in? Tap your name."}</p>
+   <div class="who">${S.kids.filter(k=>isParent()||k.id===me.id).map(k=>{const av=k.stars-pendingCost(k.id);return whoBtn(k,"data-buy",av<r.cost,`★ ${av}`)}).join("")}</div>${!isParent()&&S.settings.approve?`<p class="note">Mom or Dad will approve it before the stars come off.</p>`:""}
    <button class="btn ghost" data-close>Cancel</button>`);
   document.getElementById("scrim").dataset.reward=rewardId;
 }
@@ -530,21 +664,23 @@ document.addEventListener("click",e=>{
   const sw=t.closest("[data-color]");if(sw){S.kids.find(k=>k.id===sw.dataset.kid).color=sw.dataset.color;save();render();return}
   const em=t.closest("[data-emblem]");if(em){S.kids.find(k=>k.id===em.dataset.kid).emblem=em.dataset.emblem;save();render();return}
   const aw=t.closest("[data-award]");if(aw){const s=document.getElementById("scrim");award(aw.dataset.award,s.dataset.chore,+s.dataset.pts,s.dataset.x2);return}
-  const by=t.closest("[data-buy]");if(by){const s=document.getElementById("scrim"),r=S.rewards.find(r=>r.id===s.dataset.reward),k=S.kids.find(k=>k.id===by.dataset.buy);
-    const had=PATCHES.filter(p=>p[3](k)).length;k.stars-=r.cost;k.bought++;
-    S.log.unshift({kid:k.id,text:`${k.name} got: ${r.name}`,d:-r.cost,xp:0,buy:true});save();closeSheet();render();
-    if(PATCHES.filter(p=>p[3](k)).length>had)celebrate(k,`<div class="big-em" style="background:var(--gold);color:var(--ink)">${svg("bag")}</div>`,"New patch!",`${esc(k.name)} earned “First Reward”`);
-    else toast(`${k.name} cashed in: ${r.name}`);return}
+  const by=t.closest("[data-buy]");if(by){const s=document.getElementById("scrim");buyIt(by.dataset.buy,s.dataset.reward);return}
   const ch=t.closest(".card[data-chore],.motd");if(ch){askWho(ch.dataset.chore,ch.dataset.x2);return}
   const rw=t.closest(".card[data-reward]");if(rw){buy(rw.dataset.reward);return}
   if(t.closest("[data-close]")||t.id==="scrim"){closeSheet();return}
-  if(t.id==="parentBtn"){if(parent)setParent(false);else pinSheet(S.pinH?"enter":"set1");return}
-  if(t.closest("#pinChange")){pinSheet("set1");return}
-  if(t.closest("#pinForgot")){pinSheet("recover");return}
+  if(t.id==="parentBtn"){parent=!parent;render();return}
+  if(t.closest("#pinChange")){settingsSheet();return}
+  if(t.id==="meBtn"){logout();return}
+  if(t.closest("#setupBtn")){pinTarget={id:"dad",name:"Dad"};pinCtx="setup";pinSheet("set1");return}
+  const lg=t.closest("[data-login]");if(lg){const p=ROSTER.find(p=>p.id===lg.dataset.login);pinTarget=p;pinCtx="login";pinSheet("login");return}
+  const sp=t.closest("[data-setpin]");if(sp){const p=people().find(p=>p.id===sp.dataset.setpin);pinTarget=p;pinCtx="set";pinSheet("set1");return}
+  if(t.closest("#apTgl")){act("settings",{approve:!S.settings.approve}).then(r=>{if(r){settingsSheet();toast(S.settings.approve?"Parent approval is on":"Parent approval is off")}});return}
+  const ap=t.closest("[data-approve]");if(ap){ap.disabled=true;act("approve",{id:ap.dataset.approve}).then(r=>{if(r)toast("Approved. Stars sent!")});return}
+  const dn=t.closest("[data-deny]");if(dn){dn.disabled=true;act("deny",{id:dn.dataset.deny}).then(r=>{if(r)toast("Sent back. They can try again.")});return}
   const pk=t.closest("[data-key]");if(pk){pinKey(pk.dataset.key);return}
-  if(t.id==="undo"){const l=S.log.shift();if(l){const k=S.kids.find(k=>k.id===l.kid);if(k){k.stars-=l.d;k.xp-=l.xp||0;if(l.xp)k.missions--;if(l.x2)k.x2--;if(l.buy)k.bought--;if(l.key)delete S.done[l.key]}}save();render();toast("Last entry undone");return}
+  if(t.id==="undo"){act("undo").then(r=>{if(r)toast("Undone: "+r.result.text)});return}
   if(t.id==="reset"){sheet(`<h2>Reset every star, patch and the log?</h2><p class="note">Names, colors, missions and rewards stay. This can't be undone.</p><div class="addform"><button class="btn warn" id="resetYes">Reset stars</button><button class="btn ghost" data-close>Keep them</button></div>`);return}
-  if(t.id==="resetYes"){S.kids.forEach(k=>Object.assign(k,{xp:0,stars:0,missions:0,x2:0,bought:0}));S.log=[];S.done={};save();closeSheet();render();toast("Fresh start for the squad!");return}
+  if(t.id==="resetYes"){closeSheet();act("reset").then(r=>{if(r)toast("Fresh start for the squad!")});return}
 });
 document.addEventListener("submit",e=>{
   e.preventDefault();
@@ -554,7 +690,7 @@ document.addEventListener("submit",e=>{
 });
 document.addEventListener("change",e=>{const id=e.target.dataset.name;if(id){const k=S.kids.find(k=>k.id===id);k.name=e.target.value.trim()||k.name;save();render()}});
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeSheet();else if(pinMode&&document.getElementById("pinDots")){if(/^[0-9]$/.test(e.key))pinKey(e.key);else if(e.key==="Backspace")pinKey("back")}});
-render();
+boot();
 </script>
 
 </body></html>
