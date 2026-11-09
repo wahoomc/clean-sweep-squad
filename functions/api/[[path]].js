@@ -5,7 +5,7 @@
 //   POST /api/login         name + 4-digit PIN -> device token
 //   POST /api/logout
 //   GET  /api/state         the shared game (needs a token)
-//   POST /api/act           one game action (claim, buy, approve, config, ...)
+//   POST /api/act           one game action (claim, buy, approve, adjust, config, ...)
 //   POST /api/pin           a parent sets anyone's PIN
 // Needs a D1 database bound to the project with the variable name DB.
 
@@ -167,11 +167,26 @@ function apply(S, me, a) {
       if ("approve" in a) S.settings.approve = !!a.approve;
       return { status: "saved" };
     }
+    case "adjust": {
+      needParent();
+      const k = S.kids.find(k => k.id === a.kid); if (!k) throw new Oops("Pick a cadet");
+      let n = int(a.n, 0, 999, 0); if (n < 1) throw new Oops("Type how many stars first");
+      const why = str(a.why, 60), note = why ? ` (${why})` : "";
+      if (a.mode === "take") {
+        n = Math.min(n, k.stars); if (n < 1) throw new Oops(`${k.name} has no stars to take`);
+        k.stars -= n;
+        S.log.unshift({ id: ++S.seq, kid: k.id, text: `${k.name}: ${me.name} took stars${note}`, d: -n, xp: 0, adj: true, by: me.name, at: Date.now() });
+        return { status: "taken", n };
+      }
+      k.stars += n; k.xp += n;
+      S.log.unshift({ id: ++S.seq, kid: k.id, text: `${k.name}: bonus from ${me.name}${note}`, d: n, xp: n, adj: true, by: me.name, at: Date.now() });
+      return { status: "given", n };
+    }
     case "undo": {
       needParent();
       const l = S.log.shift(); if (!l) throw new Oops("Nothing to undo");
       const k = S.kids.find(k => k.id === l.kid);
-      if (k && !l.no) { k.stars -= l.d; k.xp -= l.xp || 0; if (l.xp) k.missions--; if (l.x2) k.x2--; if (l.buy) k.bought--; }
+      if (k && !l.no) { k.stars -= l.d; k.xp -= l.xp || 0; if (l.xp && !l.adj) k.missions--; if (l.x2) k.x2--; if (l.buy) k.bought--; }
       if (l.key) delete S.done[l.key];
       return { status: "undone", text: l.text };
     }

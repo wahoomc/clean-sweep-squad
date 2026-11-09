@@ -220,6 +220,21 @@ canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:50;width:100%;heigh
 .approvals .log li>span:first-child{font-variant-numeric:normal;font-weight:500;white-space:normal}
 .apbtns{display:flex;gap:6px}
 .apbtns .btn{padding:7px 14px;font-size:.95rem}
+.spinbtn{display:flex;align-items:center;gap:12px;width:100%;font:inherit;font-size:1.05rem;color:var(--ink);background:var(--panel);border:3px dashed var(--gold);border-radius:18px;padding:12px 16px;cursor:pointer;text-align:left}
+.spinbtn b{font-family:var(--display);font-weight:400;font-size:1.2rem}
+.spinic{width:38px;height:38px;flex:none;border-radius:50%;background:conic-gradient(#ff6b6b 0 25%,#f5b700 0 50%,#12b5a5 0 75%,#8b5cf6 0);border:3px solid var(--ink)}
+.spinbtn:hover .spinic{animation:spinI 1s linear infinite}
+@keyframes spinI{to{transform:rotate(360deg)}}
+.wheelwrap{position:relative;width:min(300px,78vw);aspect-ratio:1;align-self:center;margin-top:14px}
+.wheelwrap canvas{width:100%;height:100%;display:block}
+.pointer{position:absolute;left:50%;top:-16px;transform:translateX(-50%);width:0;height:0;border-left:18px solid transparent;border-right:18px solid transparent;border-top:34px solid var(--ink);z-index:2;filter:drop-shadow(0 2px 0 #fff)}
+.hub{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:27%;aspect-ratio:1;border-radius:50%;border:5px solid var(--ink);background:#fff;color:var(--ink);font-family:var(--display);font-size:1.15rem;cursor:pointer;box-shadow:0 4px 0 rgba(0,0,0,.2)}
+.hub:active{transform:translate(-50%,-48%)}
+.landed{display:inline-block;font-size:1.15rem;color:var(--ink);animation:pop .4s cubic-bezier(.2,1.6,.4,1)}
+.card.spot{outline:4px solid var(--gold);outline-offset:3px;animation:spotP 1s ease-in-out 3}
+@keyframes spotP{50%{transform:scale(1.04)}}
+.kpin{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px;border-radius:14px;background:var(--bg)}
+.kpin .btn{padding:8px 14px;font-size:.95rem}
 .setrow{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
 .setrow small{color:var(--muted);font-weight:500}
 .status{font-size:.8rem;font-weight:700;padding:2px 9px;border-radius:999px;background:var(--good);color:#fff}
@@ -310,7 +325,7 @@ const AREAS=[["Upstairs","up"],["Downstairs","down"],["Outside","sun"]];
 const guessArea=n=>{n=n.toLowerCase();if(/upstairs|bed|bathroom|room inspection|laundry/.test(n))return"Upstairs";if(/outside|yard|mow|rake|leaves|shovel|driveway|garage|trash/.test(n))return"Outside";return"Downstairs"};
 const fixChores=()=>S.chores.forEach(c=>{if(!c.area)c.area=guessArea(c.name);if(c.kid===undefined)c.kid=null});fixChores();
 const LOCAL=structuredClone(S);S.pending=[];S.settings={approve:true};
-let parent=false,tab="missions",who=null,editing=null;
+let parent=false,tab="missions",who=null,editing=null,spot=null;
 const isParent=()=>!!(me&&me.role==="parent");
 let saveT=null;const save=()=>{clearTimeout(saveT);saveT=setTimeout(saveConfig,250)};
 const today=()=>{const p=new Intl.DateTimeFormat("en-US",{timeZone:"America/Indiana/Indianapolis",year:"numeric",month:"numeric",day:"numeric"}).formatToParts(new Date()),g=t=>p.find(x=>x.type===t).value;return g("year")+"-"+g("month")+"-"+g("day")};
@@ -361,11 +376,12 @@ function render(){
   }else if(tab==="missions"){
     const m=motd(),vis=S.chores.filter(c=>(parent||!c.off)&&(!who||!c.kid||c.kid===who));
     const kidOf=id=>id&&S.kids.find(k=>k.id===id);
-    const card=c=>{const k=kidOf(c.kid);return `<button class="card${k?" mine":""}${c.off?" off":""}" data-chore="${c.id}" ${k?kidStyle(k):""}><span class="t">${esc(c.name)}</span><span class="cardfoot"><span class="pill">+${c.xp} ★</span>${me.role==="kid"&&S.done[doneKey(me.id,c.id)]?(S.done[doneKey(me.id,c.id)]==="p"?`<span class="status wait">Waiting</span>`:`<span class="status">Done ✓</span>`):""}${k?`<span class="tag"><span class="em">${svg(k.emblem)}</span>${esc(k.name)}</span>`:""}</span>${parent?`<span class="cardctl"><span class="tgl" data-toggle="${c.id}" role="switch" aria-checked="${!c.off}" aria-label="Mission on or off"><i></i><b>${c.off?"Off":"On"}</b></span><span class="del" data-editchore="${c.id}" role="button">Edit</span></span>`:""}</button>`};
+    const card=c=>{const k=kidOf(c.kid);return `<button id="m-${c.id}" class="card${k?" mine":""}${c.off?" off":""}${spot===c.id?" spot":""}" data-chore="${c.id}" ${k?kidStyle(k):""}><span class="t">${esc(c.name)}</span><span class="cardfoot"><span class="pill">+${c.xp} ★</span>${me.role==="kid"&&S.done[doneKey(me.id,c.id)]?(S.done[doneKey(me.id,c.id)]==="p"?`<span class="status wait">Waiting</span>`:`<span class="status">Done ✓</span>`):""}${k?`<span class="tag"><span class="em">${svg(k.emblem)}</span>${esc(k.name)}</span>`:""}</span>${parent?`<span class="cardctl"><span class="tgl" data-toggle="${c.id}" role="switch" aria-checked="${!c.off}" aria-label="Mission on or off"><i></i><b>${c.off?"Off":"On"}</b></span><span class="del" data-editchore="${c.id}" role="button">Edit</span></span>`:""}</button>`};
     v.innerHTML=`<section>
      ${pendingBox()}
      ${m&&vis.includes(m)?`<button class="motd" data-chore="${m.id}" data-x2="1"><div><p class="eyebrow">Today's special mission</p><div class="t">${esc(m.name)}</div><small>${m.xp*2} stars · double today only${kidOf(m.kid)?` · ${esc(kidOf(m.kid).name)}'s mission`:""}</small></div><span class="x2">×2</span></button>`:""}
      <div><p class="eyebrow" style="margin-bottom:8px">Show missions for</p><div class="chips"><button class="chip" data-who="" aria-pressed="${!who}">Everyone</button>${S.kids.map(k=>`<button class="chip" data-who="${k.id}" ${kidStyle(k)} aria-pressed="${who===k.id}"><span class="em">${svg(k.emblem)}</span>${esc(k.name)}</button>`).join("")}</div></div>
+     <button class="spinbtn" id="spinBtn"><span class="spinic"></span><span><b>Can't decide?</b> Spin the wheel!</span></button>
      ${AREAS.map(([a,ic])=>{const list=vis.filter(c=>c.area===a);return list.length?`<div class="area"><h3 class="areah"><span class="aic">${svg(ic)}</span>${a}<small>${list.length} mission${list.length>1?"s":""}</small></h3><div class="grid">${list.map(card).join("")}</div></div>`:""}).join("")}
      ${vis.length?"":`<p class="empty">No missions here yet.</p>`}
      ${parent?`<div class="about"><p class="eyebrow">Add a mission</p><form class="addform" id="addChore"><input id="cn" type="text" placeholder="Mission name" required><input id="cx" type="number" min="1" max="200" value="10" aria-label="Stars">
@@ -385,6 +401,7 @@ function render(){
         <div class="meta"><span><b>${k.xp}</b> total stars earned</span><span><b class="star">★ ${k.stars}</b> to spend</span><span>${nxt?`${nxt[0]-k.xp} more to ${nxt[1]}`:"Top rank!"}</span></div>
        </div></div>
        <div><p class="eyebrow" style="margin-bottom:6px">Patches</p><div class="patches">${PATCHES.map(p=>`<div class="patch ${p[3](k)?"on":""}"><i>${svg(p[2])}</i>${p[1]}</div>`).join("")}</div></div>
+       ${parent?`<div class="kpin"><span><b>Stars:</b> ${k.stars} to spend</span><button class="btn" data-adjust="${k.id}">Give or take stars</button></div>`:""}
        ${parent?`<div class="edit"><input type="text" id="name-${k.id}" data-name="${k.id}" value="${esc(k.name)}" aria-label="Name">
          <div class="swatches">${COLORS.map(c=>`<button class="sw" style="background:${c}" data-color="${c}" data-kid="${k.id}" aria-label="Color" aria-pressed="${c===k.color}"></button>`).join("")}</div>
          <div class="emblems">${EMBLEMS.map(e=>`<button class="emb" data-emblem="${e}" data-kid="${k.id}" aria-label="${e}" aria-pressed="${e===k.emblem}">${svg(e)}</button>`).join("")}</div></div>`:""}
@@ -396,12 +413,75 @@ function render(){
   }else{
     v.innerHTML=`<section>
      <p class="eyebrow">Squad store · spend your stars</p>
-     <div class="grid">${S.rewards.map(r=>`<button class="card" data-reward="${r.id}"><span class="t">${esc(r.name)}</span><span class="pill gold">★ ${r.cost}</span>${parent?`<span class="del" data-delreward="${r.id}" role="button">Remove</span>`:""}</button>`).join("")}</div>
+     <div class="grid">${S.rewards.map(r=>`<button class="card" data-reward="${r.id}"><span class="t">${esc(r.name)}</span><span class="pill gold">★ ${r.cost}</span>${parent?`<span class="del" data-editreward="${r.id}" role="button">Edit</span>`:""}</button>`).join("")}</div>
      ${parent?`<p class="eyebrow">Add a reward</p><form class="addform" id="addReward"><input id="rn" type="text" placeholder="Reward" required><input id="rc" type="number" min="1" max="999" value="50" aria-label="Cost"><button class="btn">Add</button></form>`:""}
      <p class="note">Spending stars never lowers your rank. Every star you earn counts toward promotion forever.</p>
     </section>`;
   }
 }
+// ---------- Spin the wheel ----------
+const WHEEL_COLORS=["#ff6b6b","#f5b700","#12b5a5","#8b5cf6","#3b82f6","#f5487f","#f59e0b","#14a37f"];
+let wheel=null;
+function spinPick(){sheet(`<p class="eyebrow">Spin the wheel</p><h2>Who's spinning?</h2><div class="who">${S.kids.map(k=>whoBtn(k,"data-spinkid",false,"")).join("")}</div><button class="btn ghost" data-close>Cancel</button>`)}
+function spinWheel(kidId){
+  const k=S.kids.find(k=>k.id===kidId);
+  let list=S.chores.filter(c=>!c.off&&(!c.kid||c.kid===kidId)&&!S.done[doneKey(kidId,c.id)]);
+  if(!list.length){sheet(`<p class="eyebrow">Spin the wheel</p><h2>${esc(k.name)}, you did every mission today!</h2><p class="note">That's a legend move. Check back tomorrow.</p><button class="btn" data-close>Hooah!</button>`);return}
+  list=list.sort(()=>Math.random()-.5).slice(0,10);
+  wheel={kid:kidId,list,rot:0,spinning:false,pick:null};
+  sheet(`<p class="eyebrow">Spin the wheel</p><h2>${esc(k.name)}'s mission picker</h2>
+   <div class="wheelwrap" ${kidStyle(k)}><div class="pointer"></div><canvas id="wheelCv" width="600" height="600" aria-label="Mission wheel"></canvas><button class="hub" id="spinGo" aria-label="Spin">SPIN</button></div>
+   <p class="note" id="wheelMsg" style="text-align:center">Tap SPIN. Wherever the arrow lands, that's your mission.</p>
+   <div class="addform" id="wheelAct" style="justify-content:center"><button class="btn ghost" data-close>Cancel</button></div>`);
+  drawWheel();
+}
+function drawWheel(){
+  const cv=document.getElementById("wheelCv");if(!cv||!wheel)return;const x=cv.getContext("2d"),n=wheel.list.length,st=2*Math.PI/n,R=290,cs=getComputedStyle(document.body);
+  x.clearRect(0,0,600,600);x.save();x.translate(300,300);x.rotate(wheel.rot);
+  wheel.list.forEach((c,i)=>{x.beginPath();x.moveTo(0,0);x.arc(0,0,R,i*st,(i+1)*st);x.closePath();x.fillStyle=WHEEL_COLORS[i%WHEEL_COLORS.length];x.fill();x.lineWidth=4;x.strokeStyle="#fff";x.stroke();
+    x.save();x.rotate((i+.5)*st);x.fillStyle=i%8===1||i%8===6?"#1d2a4a":"#fff";x.textAlign="right";x.textBaseline="middle";
+    let t=c.name,fs=n>7?24:28;x.font=`600 ${fs}px Fredoka, system-ui, sans-serif`;while(x.measureText(t).width>R-128&&t.length>4)t=t.slice(0,-2);if(t!==c.name)t=t.trim()+"…";
+    x.fillText(t,R-24,0);x.restore()});
+  x.beginPath();x.arc(0,0,R,0,2*Math.PI);x.lineWidth=10;x.strokeStyle="#1d2a4a";x.stroke();x.restore();
+}
+function spinGo(){
+  if(!wheel||wheel.spinning)return;wheel.spinning=true;
+  const n=wheel.list.length,st=2*Math.PI/n,i=Math.floor(Math.random()*n),jit=(Math.random()-.5)*st*.6;
+  const base=-Math.PI/2-(i+.5)*st+jit;let target=base;const turns=matchMedia("(prefers-reduced-motion: reduce)").matches?1:6;
+  while(target<wheel.rot+turns*2*Math.PI)target+=2*Math.PI;
+  const from=wheel.rot,dur=turns>1?4200:600,t0=performance.now();
+  document.getElementById("wheelMsg").textContent="Spinning…";document.getElementById("wheelAct").hidden=true;
+  (function step(now){const p=Math.min(1,(now-t0)/dur),e=1-Math.pow(1-p,4);wheel.rot=from+(target-from)*e;drawWheel();
+    if(p<1)requestAnimationFrame(step);else{wheel.spinning=false;wheel.pick=wheel.list[i];landed()}})(t0);
+}
+function landed(){
+  const c=wheel.pick,k=S.kids.find(k=>k.id===wheel.kid);burst(60,k.color);
+  document.getElementById("wheelMsg").innerHTML=`<span class="landed">Your mission: <b>${esc(c.name)}</b> <span style="white-space:nowrap">· +${c.xp} ★</span></span>`;
+  const a=document.getElementById("wheelAct");a.hidden=false;
+  a.innerHTML=`<button class="btn" id="spinAccept">Mission accepted!</button><button class="btn ghost" id="spinAgain">Spin again</button>`;
+}
+function editReward(id){
+  const r=S.rewards.find(r=>r.id===id);if(!r)return;editing=id;
+  sheet(`<p class="eyebrow">Edit reward</p><h2>${esc(r.name)}</h2>
+   <div class="editgrid"><label>Reward<input id="rn2" type="text" value="${esc(r.name)}"></label><label>Cost in stars<input id="rc2" type="number" min="1" max="999" value="${r.cost}"></label></div>
+   <div class="addform"><button class="btn" id="saveReward">Save</button><button class="btn ghost" id="delReward">Remove reward</button><button class="btn ghost" data-close style="border-color:var(--line);color:var(--muted)">Cancel</button></div>`);
+}
+function adjustSheet(id){
+  const k=S.kids.find(k=>k.id===id);if(!k)return;editing=id;
+  sheet(`<p class="eyebrow">Adjust stars</p><h2>${esc(k.name)}</h2><p class="note">${k.stars} stars to spend \u00b7 ${k.xp} earned all-time</p>
+   <div class="editgrid"><label>How many stars<input id="adjAmt" type="number" min="1" max="999" value="5"></label><label>Reason (optional)<input id="adjWhy" type="text" placeholder="Helped without being asked"></label></div>
+   <div class="addform">${[1,5,10,25].map(n=>`<button class="btn ghost" data-qamt="${n}" style="border-color:var(--line);color:var(--ink)">+${n}</button>`).join("")}</div>
+   <p class="note"><b>Give</b> adds bonus stars that count toward rank, like a mission. <b>Take</b> removes stars to spend but never lowers rank. Both show in the mission log, and Undo last reverses them.</p>
+   <div class="addform"><button class="btn" id="adjGive" style="background:var(--good)">Give stars</button><button class="btn warn" id="adjTake">Take stars</button><button class="btn ghost" data-close style="border-color:var(--line);color:var(--muted)">Cancel</button></div>`);
+}
+// ---------- Auto log-out on shared devices: 2 idle minutes ends the session ----------
+const IDLE_MS=window.__IDLE_MS||120000;let idleT=null,lastAct=Date.now();
+const autoOut=()=>{try{return localStorage.getItem("css_autoout")!=="off"}catch(e){return true}};
+function idleOut(){if(!me||!autoOut())return;if(wheel&&wheel.spinning){bump();return}document.querySelectorAll(".promo").forEach(d=>d.remove());logout().then(()=>toast("Logged out after 2 quiet minutes. Next cadet, tap your name!"))}
+function bump(){lastAct=Date.now();clearTimeout(idleT);idleT=setTimeout(idleOut,IDLE_MS)}
+["pointerdown","keydown","scroll","touchstart"].forEach(ev=>addEventListener(ev,bump,{passive:true}));
+document.addEventListener("visibilitychange",()=>{if(document.hidden)return;if(me&&autoOut()&&Date.now()-lastAct>=IDLE_MS)idleOut();else bump()});
+bump();
 function editChore(id){
   const c=S.chores.find(c=>c.id===id);if(!c)return;editing=id;
   sheet(`<p class="eyebrow">Edit mission</p><h2>${esc(c.name)}</h2>
@@ -481,6 +561,7 @@ async function buyIt(kidId,rewardId){
 function settingsSheet(){
   sheet(`<p class="eyebrow">Grown-ups only</p><h2>Squad settings</h2>
    <div class="setrow"><span><b>Parent approval</b><br><small>Kids' missions and store buys wait for Mom or Dad before stars move.</small></span><span class="tgl" id="apTgl" role="switch" tabindex="0" aria-checked="${!!S.settings.approve}"><i></i><b>${S.settings.approve?"On":"Off"}</b></span></div>
+   <div class="setrow"><span><b>Auto log-out on this device</b><br><small>After 2 quiet minutes, whoever is logged in here gets logged out. Turn it off on your own phone.</small></span><span class="tgl" id="aoTgl" role="switch" tabindex="0" aria-checked="${autoOut()}"><i></i><b>${autoOut()?"On":"Off"}</b></span></div>
    <p class="eyebrow" style="margin-top:6px">Login PINs</p>
    <div>${people().map(p=>`<div class="setrow"><span><b>${esc(p.name)}</b><br><small>${PINS[p.id]?"PIN is set":"No PIN yet, can't log in"}</small></span><button class="btn ghost" data-setpin="${p.id}">${PINS[p.id]?"Change PIN":"Set PIN"}</button></div>`).join("")}</div>
    <p class="note">Kids log in with their own PIN on their Chromebook. If you and Mom both forget yours, the PINs can be reset from Cloudflare.</p>
@@ -657,7 +738,23 @@ document.addEventListener("click",e=>{
   if(t.closest("#tutBtn")){sheet(`<p class="eyebrow">Parent tutorial</p><h2>How to run the Squad</h2><video id="tutVid" src="parent-tutorial.mp4" controls playsinline preload="metadata"></video><button class="btn ghost" data-close>Close</button>`);return}
   if(t.id==="saveChore"){const c=S.chores.find(c=>c.id===editing);if(c){c.name=document.getElementById("en").value.trim()||c.name;c.xp=Math.max(1,+document.getElementById("ex").value||c.xp);c.area=document.getElementById("ea").value;c.kid=document.getElementById("ek").value||null}save();closeSheet();render();toast("Mission updated");return}
   if(t.id==="delChore"){S.chores=S.chores.filter(c=>c.id!==editing);save();closeSheet();render();toast("Mission removed");return}
-  const delr=t.closest("[data-delreward]");if(delr){S.rewards=S.rewards.filter(r=>r.id!==delr.dataset.delreward);save();render();return}
+  const er=t.closest("[data-editreward]");if(er){editReward(er.dataset.editreward);return}
+  if(t.id==="saveReward"){const r=S.rewards.find(r=>r.id===editing);if(r){r.name=document.getElementById("rn2").value.trim()||r.name;r.cost=Math.max(1,+document.getElementById("rc2").value||r.cost)}save();closeSheet();render();toast("Reward updated");return}
+  if(t.id==="delReward"){S.rewards=S.rewards.filter(r=>r.id!==editing);save();closeSheet();render();toast("Reward removed");return}
+  const adj=t.closest("[data-adjust]");if(adj){adjustSheet(adj.dataset.adjust);return}
+  const qa=t.closest("[data-qamt]");if(qa){const i=document.getElementById("adjAmt");i.value=Math.max(1,(+i.value||0)+ +qa.dataset.qamt);return}
+  if(t.id==="adjGive"||t.id==="adjTake"){const kid=editing,k0=S.kids.find(k=>k.id===kid);const n=Math.round(+document.getElementById("adjAmt").value||0),why=document.getElementById("adjWhy").value.trim(),give=t.id==="adjGive";
+    if(!k0||n<1){toast("Type how many stars first");return}
+    const before=rankOf(k0.xp);closeSheet();
+    act("adjust",{kid,n,mode:give?"give":"take",why}).then(r=>{if(!r)return;const k=S.kids.find(k=>k.id===kid);const got=r.result.n;
+      if(give){burst(60,k.color);const after=rankOf(k.xp);if(after>before)celebrate(k,`${insignia(after)}`,`Promoted!`,`${esc(k.name)} is now ${RANKS[after][1]}`);else toast(`+${got} \u2605 for ${k.name}`)}
+      else toast(`\u2212${got} \u2605 from ${k.name}`)});return}
+  if(t.closest("#aoTgl")){try{localStorage.setItem("css_autoout",autoOut()?"off":"on")}catch(e){}settingsSheet();toast(autoOut()?"Auto log-out is on for this device":"Auto log-out is off for this device");return}
+  if(t.closest("#spinBtn")){if(me&&me.role==="kid")spinWheel(me.id);else if(who)spinWheel(who);else spinPick();return}
+  const sk=t.closest("[data-spinkid]");if(sk){spinWheel(sk.dataset.spinkid);return}
+  if(t.closest("#spinGo")){spinGo();return}
+  if(t.id==="spinAgain"){spinGo();return}
+  if(t.id==="spinAccept"){const c=wheel&&wheel.pick;if(wheel&&wheel.spinning)return;closeSheet();if(c){spot=c.id;if(who&&c.kid&&c.kid!==who)who=null;render();const el=document.getElementById("m-"+c.id);if(el)el.scrollIntoView({behavior:"smooth",block:"center"});setTimeout(()=>{spot=null;const e2=document.getElementById("m-"+c.id);if(e2)e2.classList.remove("spot")},6000)}return}
   const tb=t.closest("nav button");if(tb){tab=tb.dataset.tab;render();return}
   if(t.id==="helpBtn"){tab=tab==="about"?"missions":"about";render();scrollTo(0,0);return}
   const go=t.closest("[data-go]");if(go){tab=go.dataset.go;render();scrollTo(0,0);return}
@@ -667,7 +764,7 @@ document.addEventListener("click",e=>{
   const by=t.closest("[data-buy]");if(by){const s=document.getElementById("scrim");buyIt(by.dataset.buy,s.dataset.reward);return}
   const ch=t.closest(".card[data-chore],.motd");if(ch){askWho(ch.dataset.chore,ch.dataset.x2);return}
   const rw=t.closest(".card[data-reward]");if(rw){buy(rw.dataset.reward);return}
-  if(t.closest("[data-close]")||t.id==="scrim"){closeSheet();return}
+  if(t.closest("[data-close]")||t.id==="scrim"){if(wheel&&wheel.spinning)return;closeSheet();return}
   if(t.id==="parentBtn"){parent=!parent;render();return}
   if(t.closest("#pinChange")){settingsSheet();return}
   if(t.id==="meBtn"){logout();return}
