@@ -240,6 +240,11 @@ canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:50;width:100%;heigh
 .status{font-size:.8rem;font-weight:700;padding:2px 9px;border-radius:999px;background:var(--good);color:#fff}
 .status.wait{background:var(--gold);color:#3a2a00}
 .sync{font-size:.8rem;color:var(--muted);font-weight:600}
+#demoBar{position:fixed;top:0;left:0;right:0;z-index:45;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;background:var(--ink);color:var(--panel);font-size:.9rem;line-height:1.3;text-align:center;padding:calc(8px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 8px max(16px,env(safe-area-inset-left,0px))}
+#demoBar b{color:var(--gold)}
+#demoBar button{font:inherit;font-weight:700;border:2px solid var(--gold);background:transparent;color:var(--gold);border-radius:999px;padding:4px 12px;cursor:pointer}
+html.demo body{padding-top:var(--demoH,44px)}
+html.demo #gate{top:var(--demoH,44px)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 
@@ -265,6 +270,19 @@ canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:50;width:100%;heigh
 <canvas id="fx"></canvas>
 
 <script>
+// ---------- Demo mode (chores.mcdanielnet.com/demo): the whole game runs in this browser on throwaway data ----------
+const DEMO=new URLSearchParams(location.search).has("demo");
+const STORE=DEMO?(()=>{const m=new Map();return{getItem:k=>m.has(k)?m.get(k):null,setItem:(k,v)=>void m.set(k,String(v)),removeItem:k=>void m.delete(k)}})()
+  :{getItem:k=>localStorage.getItem(k),setItem:(k,v)=>localStorage.setItem(k,v),removeItem:k=>localStorage.removeItem(k)};
+let demoMod=null;
+const demoFetch=async(u,o)=>{demoMod??=import("/demo.js").then(async m=>{await m.start(LOCAL);return m});return(await demoMod).demoFetch(u,o)};
+if(DEMO){
+  document.documentElement.classList.add("demo");document.title="Clean Sweep Squad Demo";
+  const b=document.createElement("div");b.id="demoBar";
+  b.innerHTML=`<span><b>Demo</b> \u00b7 Try anything. Nothing is saved. PINs: Mom &amp; Dad <b>1111</b> \u00b7 Kids <b>2222</b></span><button type="button" id="demoReset">Start over</button>`;
+  document.body.prepend(b);b.querySelector("#demoReset").addEventListener("click",()=>location.reload());
+  const fit=()=>document.documentElement.style.setProperty("--demoH",b.offsetHeight+"px");fit();addEventListener("resize",fit);
+}
 const ICONS={
  book:'<path d="M2.5 5.5c3.2-1.2 6.2-.9 8.8 1V20c-2.6-1.7-5.6-2-8.8-.9zM21.5 5.5c-3.2-1.2-6.2-.9-8.8 1V20c2.6-1.7 5.6-2 8.8-.9z" fill="currentColor"/>',
  soccer:'<circle cx="12" cy="12" r="10.5" fill="currentColor"/><g style="fill:var(--kid,#1d2a4a);stroke:var(--kid,#1d2a4a)" stroke-width="1.4" stroke-linejoin="round"><path d="M12 8l3.8 2.8-1.5 4.5H9.7l-1.5-4.5z"/><path d="M10 2l4 0 .6 2.2L12 5.4 9.4 4.2zM20.6 8.3l1.3 3.8-1.8 1.4-2.3-1.6.6-2.7zM18.3 19.5l-3.3 2.3-1.6-1.3 1-2.7 2.8-.1zM5.7 19.5l3.3 2.3 1.6-1.3-1-2.7-2.8-.1zM3.4 8.3L2.1 12.1l1.8 1.4 2.3-1.6-.6-2.7z"/><path d="M12 8V5.4M15.8 10.8l2-1M14.3 15.3l1 2.4M9.7 15.3l-1 2.4M8.2 10.8l-2-1" fill="none"/></g>',
@@ -314,13 +332,13 @@ const DEFAULT={
   ["Skip one chore (not trash)",80],["$5 cash",120],["One-on-one date with Mom or Dad",150]].map((r,i)=>({id:"r"+i,name:r[0],cost:r[1]})),
  log:[],done:{}
 };
-let S;try{S=JSON.parse(localStorage.getItem("cleansweep"))}catch(e){}
+let S;try{S=JSON.parse(STORE.getItem("cleansweep"))}catch(e){}
 if(!S||!S.kids)S=structuredClone(DEFAULT);
 // Real names, applied once to devices still showing the placeholders
-if(!(S.names>=1)){const NM={a:"Isabella",b:"Margaret",c:"William"},PH=["Oldest","Middle","Youngest"];S.kids.forEach(k=>{if(PH.includes(k.name)&&NM[k.id]){k.name=NM[k.id];S.log.forEach(l=>{if(l.kid===k.id)l.text=l.text.replace(/^(Oldest|Middle|Youngest)/,k.name)})}if(k.id==="c"&&k.emblem==="heart"&&k.color===COLORS[1]){k.emblem="shield";k.color=COLORS[3]}});S.names=1;try{localStorage.setItem("cleansweep",JSON.stringify(S))}catch(e){}}
-if(!(S.names>=2)){const EM={a:"mic",b:"book",c:"soccer"};S.kids.forEach(k=>{if(EM[k.id])k.emblem=EM[k.id]});S.names=2;try{localStorage.setItem("cleansweep",JSON.stringify(S))}catch(e){}}
+if(!(S.names>=1)){const NM={a:"Isabella",b:"Margaret",c:"William"},PH=["Oldest","Middle","Youngest"];S.kids.forEach(k=>{if(PH.includes(k.name)&&NM[k.id]){k.name=NM[k.id];S.log.forEach(l=>{if(l.kid===k.id)l.text=l.text.replace(/^(Oldest|Middle|Youngest)/,k.name)})}if(k.id==="c"&&k.emblem==="heart"&&k.color===COLORS[1]){k.emblem="shield";k.color=COLORS[3]}});S.names=1;try{STORE.setItem("cleansweep",JSON.stringify(S))}catch(e){}}
+if(!(S.names>=2)){const EM={a:"mic",b:"book",c:"soccer"};S.kids.forEach(k=>{if(EM[k.id])k.emblem=EM[k.id]});S.names=2;try{STORE.setItem("cleansweep",JSON.stringify(S))}catch(e){}}
 // v2 house missions, added once (so a parent's later removals stick)
-if(!(S.v>=3)){[["Mow the yard",30],["Tidy the living room",15],["Tidy the dining room",15],["Clean the downstairs toilet",20],["Clean the upstairs toilet",20],["Clean the door knobs",10],["Dry mop downstairs",15],["Wipe the stairs",15]].forEach(([n,x],i)=>{if(!S.chores.some(c=>c.name===n))S.chores.push({id:"h2_"+i,name:n,xp:x})});S.v=3;try{localStorage.setItem("cleansweep",JSON.stringify(S))}catch(e){}}
+if(!(S.v>=3)){[["Mow the yard",30],["Tidy the living room",15],["Tidy the dining room",15],["Clean the downstairs toilet",20],["Clean the upstairs toilet",20],["Clean the door knobs",10],["Dry mop downstairs",15],["Wipe the stairs",15]].forEach(([n,x],i)=>{if(!S.chores.some(c=>c.name===n))S.chores.push({id:"h2_"+i,name:n,xp:x})});S.v=3;try{STORE.setItem("cleansweep",JSON.stringify(S))}catch(e){}}
 const AREAS=[["Upstairs","up"],["Downstairs","down"],["Outside","sun"]];
 const guessArea=n=>{n=n.toLowerCase();if(/upstairs|bed|bathroom|room inspection|laundry/.test(n))return"Upstairs";if(/outside|yard|mow|rake|leaves|shovel|driveway|garage|trash/.test(n))return"Outside";return"Downstairs"};
 const fixChores=()=>S.chores.forEach(c=>{if(!c.area)c.area=guessArea(c.name);if(c.kid===undefined)c.kid=null});fixChores();
@@ -476,7 +494,7 @@ function adjustSheet(id){
 }
 // ---------- Auto log-out on shared devices: 2 idle minutes ends the session ----------
 const IDLE_MS=window.__IDLE_MS||120000;let idleT=null,lastAct=Date.now();
-const autoOut=()=>{try{return localStorage.getItem("css_autoout")!=="off"}catch(e){return true}};
+const autoOut=()=>{try{return STORE.getItem("css_autoout")!=="off"}catch(e){return true}};
 function idleOut(){if(!me||!autoOut())return;if(wheel&&wheel.spinning){bump();return}document.querySelectorAll(".promo").forEach(d=>d.remove());logout().then(()=>toast("Logged out after 2 quiet minutes. Next cadet, tap your name!"))}
 function bump(){lastAct=Date.now();clearTimeout(idleT);idleT=setTimeout(idleOut,IDLE_MS)}
 ["pointerdown","keydown","scroll","touchstart"].forEach(ev=>addEventListener(ev,bump,{passive:true}));
@@ -492,15 +510,15 @@ function editChore(id){
    <div class="addform"><button class="btn" id="saveChore">Save</button><button class="btn ghost" id="delChore">Remove mission</button><button class="btn ghost" data-close style="border-color:var(--line);color:var(--muted)">Cancel</button></div>`);
 }
 // ---------- Family sync: every device shares one scoreboard ----------
-let TOKEN=null;try{TOKEN=localStorage.getItem("css_token")}catch(e){}
+let TOKEN=null;try{TOKEN=STORE.getItem("css_token")}catch(e){}
 let me=null,REV=0,PINS={},ROSTER=[],waitRender=false;
 const PARENT_LIST=[{id:"dad",name:"Dad",color:"#1d2a4a",emblem:"shield",role:"parent"},{id:"mom",name:"Mom",color:"#f5487f",emblem:"heart",role:"parent"}];
 const people=()=>[...S.kids.map(k=>({id:k.id,name:k.name,color:k.color,emblem:k.emblem,role:"kid"})),...PARENT_LIST];
 const pendingCost=kid=>(S.pending||[]).filter(p=>p.kid===kid&&p.type==="buy").reduce((a,p)=>a+p.cost,0);
-function setToken(t){TOKEN=t;try{t?localStorage.setItem("css_token",t):localStorage.removeItem("css_token")}catch(e){}}
+function setToken(t){TOKEN=t;try{t?STORE.setItem("css_token",t):STORE.removeItem("css_token")}catch(e){}}
 async function api(path,body){
   let r;
-  try{r=await fetch("/api/"+path,{method:body?"POST":"GET",headers:{"content-type":"application/json",...(TOKEN?{authorization:"Bearer "+TOKEN}:{})},body:body?JSON.stringify(body):undefined,cache:"no-store"})}
+  try{r=await (DEMO?demoFetch:fetch)("/api/"+path,{method:body?"POST":"GET",headers:{"content-type":"application/json",...(TOKEN?{authorization:"Bearer "+TOKEN}:{})},body:body?JSON.stringify(body):undefined,cache:"no-store"})}
   catch(e){throw new Error("Can't reach the Squad. Check the Wi-Fi and try again.")}
   let j={};try{j=await r.json()}catch(e){}
   if(r.status===401&&TOKEN&&!["login","setup"].includes(path)){signedOut();throw new Error("signed out")}
@@ -749,7 +767,7 @@ document.addEventListener("click",e=>{
     act("adjust",{kid,n,mode:give?"give":"take",why}).then(r=>{if(!r)return;const k=S.kids.find(k=>k.id===kid);const got=r.result.n;
       if(give){burst(60,k.color);const after=rankOf(k.xp);if(after>before)celebrate(k,`${insignia(after)}`,`Promoted!`,`${esc(k.name)} is now ${RANKS[after][1]}`);else toast(`+${got} \u2605 for ${k.name}`)}
       else toast(`\u2212${got} \u2605 from ${k.name}`)});return}
-  if(t.closest("#aoTgl")){try{localStorage.setItem("css_autoout",autoOut()?"off":"on")}catch(e){}settingsSheet();toast(autoOut()?"Auto log-out is on for this device":"Auto log-out is off for this device");return}
+  if(t.closest("#aoTgl")){try{STORE.setItem("css_autoout",autoOut()?"off":"on")}catch(e){}settingsSheet();toast(autoOut()?"Auto log-out is on for this device":"Auto log-out is off for this device");return}
   if(t.closest("#spinBtn")){if(me&&me.role==="kid")spinWheel(me.id);else if(who)spinWheel(who);else spinPick();return}
   const sk=t.closest("[data-spinkid]");if(sk){spinWheel(sk.dataset.spinkid);return}
   if(t.closest("#spinGo")){spinGo();return}
