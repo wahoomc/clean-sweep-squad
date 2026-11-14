@@ -162,7 +162,7 @@ function apply(S, me, a) {
     case "claim": {
       const k = kidFor(a.kid), c = S.chores.find(c => c.id === a.chore);
       if (!c || c.off) throw new Oops("That mission isn't available right now");
-      if (c.kid && c.kid !== k.id) throw new Oops("That mission belongs to someone else");
+      if (c.kid && c.kid !== k.id && !((S.orders || {})[k.id] || []).includes(c.id)) throw new Oops("That mission belongs to someone else");
       const key = doneKey(k.id, c.id);
       if (S.done[key]) throw new Oops(S.done[key] === "p" ? "Already waiting for approval" : "Already done today. Try again tomorrow!");
       const m = motd(S), x2 = !!a.x2 && m && m.id === c.id, pts = c.xp * (x2 ? 2 : 1);
@@ -206,6 +206,17 @@ function apply(S, me, a) {
       if (Array.isArray(c.chores)) S.chores = cleanChores(c.chores, ids);
       if (Array.isArray(c.rewards)) S.rewards = cleanRewards(c.rewards);
       return { status: "saved" };
+    }
+    case "orders": {
+      needParent();
+      S.orders = S.orders || {};
+      if (a.clear) { if (a.kid) delete S.orders[a.kid]; else S.orders = {}; return { status: "cleared" }; }
+      const k = S.kids.find(k => k.id === a.kid); if (!k) throw new Oops("Pick a cadet");
+      const c = S.chores.find(c => c.id === a.chore); if (!c) throw new Oops("That mission isn't on the list anymore");
+      const list = (S.orders[k.id] || []).filter(id => id !== c.id);
+      if (a.on) { list.push(c.id); c.off = false; } // requiring a mission switches it on
+      if (list.length) S.orders[k.id] = list; else delete S.orders[k.id];
+      return { status: a.on ? "required" : "removed" };
     }
     case "settings": {
       needParent();
@@ -342,6 +353,10 @@ export async function onRequest({ request, env, params }) {
         const S = cur.v, t = today();
         const result = apply(S, me, a);
         for (const k of Object.keys(S.done)) if (!k.startsWith(t + "|")) delete S.done[k];
+        if (S.orders) for (const kid of Object.keys(S.orders)) {
+          S.orders[kid] = S.orders[kid].filter(id => S.chores.some(c => c.id === id));
+          if (!S.orders[kid].length || !S.kids.some(k => k.id === kid)) delete S.orders[kid];
+        }
         S.log = S.log.slice(0, LOG_MAX);
         const r = await db.prepare("UPDATE kv SET v = ?, rev = rev + 1 WHERE k = 'state' AND rev = ?").bind(JSON.stringify(S), cur.rev).run();
         if (r.meta.changes === 1) return stateReply(db, whoIs(me.id, S), { v: S, rev: cur.rev + 1 }, { result });

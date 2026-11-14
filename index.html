@@ -240,6 +240,39 @@ canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:50;width:100%;heigh
 .status{font-size:.8rem;font-weight:700;padding:2px 9px;border-radius:999px;background:var(--good);color:#fff}
 .status.wait{background:var(--gold);color:#3a2a00}
 .sync{font-size:.8rem;color:var(--muted);font-weight:600}
+.orders{border-color:var(--kid);border-width:3px}
+.orders h2{margin:0;font-size:1.25rem}
+.olist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.orow{width:100%;display:flex;align-items:center;gap:10px;flex-wrap:wrap;text-align:left;font:inherit;color:var(--ink);background:var(--bg);border:2px solid var(--line);border-radius:14px;padding:10px 12px;cursor:pointer}
+.orow .t{flex:1 1 140px;min-width:0;font-weight:600}
+.orow:disabled{cursor:default;opacity:.75}
+.orow.done .t{text-decoration:line-through;color:var(--muted)}
+.orow.todo{border-color:var(--kid)}
+.onum{width:30px;height:30px;flex:none;border-radius:50%;display:grid;place-items:center;background:var(--kid);color:#fff;font-size:.95rem}
+.onum svg{width:16px;height:16px}
+.orow.done .onum{background:var(--good)}
+.status.go{background:var(--accent);color:#fff}
+.status.req{background:var(--ink);color:var(--panel)}
+.osum-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.osum{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.osum li{display:grid;grid-template-columns:28px minmax(0,1fr) minmax(0,1.1fr) auto;align-items:center;gap:10px}
+.osum .em,.acount .em,.achip .em{width:26px;height:26px;border-radius:50%;background:var(--kid);display:grid;place-items:center;color:#fff;flex:none}
+.osum .em svg,.acount .em svg,.achip .em svg{width:15px;height:15px}
+.osum .nm{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.osum .bar{margin:0}
+.osum .ct{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.osum .ct.none{grid-column:3/5;color:var(--muted);font-weight:600}
+.acount{display:flex;gap:8px;flex-wrap:wrap}
+.acount>span{display:inline-flex;align-items:center;gap:6px;font-weight:600;padding:4px 10px 4px 4px;border-radius:999px;background:var(--bg)}
+.ah{margin:6px 0 0;font-size:1.05rem}
+.arow{display:flex;flex-direction:column;gap:6px;padding:10px 0;border-bottom:1px solid var(--line)}
+.arow.off .an b{color:var(--muted)}
+.an{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.an small{color:var(--muted);white-space:nowrap}
+.akids{display:flex;gap:6px;flex-wrap:wrap}
+.achip{font:inherit;font-weight:700;font-size:.9rem;display:inline-flex;align-items:center;gap:6px;padding:4px 12px 4px 4px;border-radius:999px;border:2px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+.achip[aria-pressed="true"]{border-color:var(--kid);background:var(--kid);color:#fff}
+.achip[aria-pressed="true"] .em{background:rgba(255,255,255,.28)}
 #demoBar{position:fixed;top:0;left:0;right:0;z-index:45;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;background:var(--ink);color:var(--panel);font-size:.9rem;line-height:1.3;text-align:center;padding:calc(8px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 8px max(16px,env(safe-area-inset-left,0px))}
 #demoBar b{color:var(--gold)}
 #demoBar button{font:inherit;font-weight:700;border:2px solid var(--gold);background:transparent;color:var(--gold);border-radius:999px;padding:4px 12px;cursor:pointer}
@@ -262,7 +295,7 @@ html.demo #gate{top:var(--demoH,44px)}
     <button role="tab" data-tab="squad" aria-selected="false">Squad</button>
     <button role="tab" data-tab="px" aria-selected="false">Store</button>
   </nav>
-  <div class="pbar" id="pbar" hidden><span><b>Parent tools are on.</b> Edit missions, rewards and PINs.</span><span style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost" id="pinChange">Squad settings</button><button class="btn" id="tutBtn"><span class="pi"></span>Watch the parent tutorial</button></span></div>
+  <div class="pbar" id="pbar" hidden><span><b>Parent tools are on.</b> Edit missions, rewards and PINs.</span><span style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost" id="assignBtn2">Assign chores</button><button class="btn ghost" id="pinChange">Squad settings</button><button class="btn" id="tutBtn"><span class="pi"></span>Watch the parent tutorial</button></span></div>
   <main id="view"></main>
 </div>
 <div id="gate" hidden></div>
@@ -353,6 +386,39 @@ const kidStyle=k=>`style="--kid:${k.color}"`;
 const insignia=i=>`<span class="ins">${Array(RANKS[i][2]).fill(svg("star")).join("")}</span>`;
 function motd(){const on=S.chores.filter(c=>!c.off);let h=0;for(const ch of today())h=(h*31+ch.charCodeAt(0))>>>0;return on.length?on[h%on.length]:null}
 const doneKey=(kid,ch)=>today()+"|"+kid+"|"+ch;
+// ---------- Orders: chores a parent marks required for a kid (kept until a parent changes them) ----------
+const reqIds=kid=>(kid&&S.orders&&S.orders[kid])||[];
+const ordersFor=kid=>reqIds(kid).map(id=>S.chores.find(c=>c.id===id)).filter(c=>c&&!c.off).sort((a,b)=>a.xp-b.xp||a.name.localeCompare(b.name)); // quick wins first
+const ordState=(kid,c)=>{const d=S.done[doneKey(kid,c.id)];return d==="p"?"wait":d?"done":"todo"};
+function ordersBox(kid){
+  const k=S.kids.find(k=>k.id===kid),list=ordersFor(kid);if(!k||!list.length)return"";
+  const st=list.map(c=>ordState(kid,c)),n=st.filter(x=>x==="done").length,sent=st.filter(x=>x!=="todo").length,first=st.indexOf("todo");
+  const mine=me.role==="kid";
+  return `<div class="about orders" ${kidStyle(k)}><p class="eyebrow">${mine?"Today's orders":esc(k.name)+"'s orders"} · ${n} of ${list.length} done</p>
+   <h2>${sent===list.length?(n===list.length?"All orders complete!":"All orders turned in!"):mine?"Quick wins first. Start at the top.":"Quick wins first"}</h2>
+   <div class="bar"><i style="width:${Math.round(n/list.length*100)}%"></i></div>
+   <ol class="olist">${list.map((c,i)=>`<li><button class="orow ${st[i]}" data-chore="${c.id}" ${st[i]==="todo"?"":"disabled"}><b class="onum">${st[i]==="done"?svg("check"):i+1}</b><span class="t">${esc(c.name)}</span><span class="pill">+${c.xp} ★</span>${st[i]==="done"?`<span class="status">Done</span>`:st[i]==="wait"?`<span class="status wait">Waiting</span>`:i===first?`<span class="status go">Start here</span>`:""}</button></li>`).join("")}</ol>
+   <p class="note">${sent===list.length?"Anything else on the board is bonus stars.":"Finish these first. Everything else on the board is bonus stars."}</p></div>`;
+}
+function ordersSummary(){
+  const any=S.kids.some(k=>ordersFor(k.id).length);
+  return `<div class="about orders-sum"><div class="osum-head"><p class="eyebrow">Required chores</p><button class="btn" id="assignBtn">Assign chores</button></div>
+   ${any?`<ul class="osum">${S.kids.map(k=>{const l=ordersFor(k.id),n=l.filter(c=>ordState(k.id,c)==="done").length;
+     return `<li ${kidStyle(k)}><span class="em">${svg(k.emblem)}</span><span class="nm">${esc(k.name)}</span>${l.length?`<span class="bar"><i style="width:${Math.round(n/l.length*100)}%"></i></span><span class="ct">${n} of ${l.length}</span>`:`<span class="ct none">None required</span>`}</li>`}).join("")}</ul>`
+   :`<p class="note">Nothing is required yet. Tap Assign chores to pick which chores each kid has to do.</p>`}</div>`;
+}
+function assignSheet(keepScroll){
+  const prev=keepScroll?document.querySelector(".sheet")?.scrollTop||0:0;
+  const row=c=>`<div class="arow${c.off?" off":""}"><span class="an"><b>${esc(c.name)}</b><small>+${c.xp} ★${c.off?" · switched off":""}</small></span>
+    <span class="akids">${S.kids.map(k=>{const on=reqIds(k.id).includes(c.id);return `<button class="achip" data-ord="${k.id}|${c.id}" aria-pressed="${on}" ${kidStyle(k)}><span class="em">${svg(k.emblem)}</span>${esc(k.name)}</button>`}).join("")}</span></div>`;
+  sheet(`<p class="eyebrow">Parent tools</p><h2>Assign chores</h2>
+   <p class="note">Tap a kid's name to make that chore required for them. Required chores show at the top of their board, quick wins first, and stay until you change them.</p>
+   <div class="acount">${S.kids.map(k=>`<span ${kidStyle(k)}><span class="em">${svg(k.emblem)}</span>${esc(k.name)} <b>${reqIds(k.id).length}</b></span>`).join("")}</div>
+   ${AREAS.map(([a])=>{const l=S.chores.filter(c=>c.area===a);return l.length?`<h3 class="ah">${a}</h3>${l.map(row).join("")}`:""}).join("")}
+   <div class="addform" style="justify-content:space-between"><button class="btn ghost" id="ordClear">${clearArmed?"Tap again to clear all":"Clear all"}</button><button class="btn" data-close>Done</button></div>`);
+  if(prev)document.querySelector(".sheet").scrollTop=prev;
+}
+let clearArmed=false;
 
 function strip(){
   document.getElementById("strip").innerHTML=S.kids.map(k=>`<div class="mini" ${kidStyle(k)}><span class="em">${svg(k.emblem)}</span><span class="n">${esc(k.name)}</span><span class="r">${RANKS[rankOf(k.xp)][1]}</span><span class="s"><span class="star">★</span> ${k.stars}</span></div>`).join("");
@@ -392,11 +458,12 @@ function render(){
      <button class="btn" style="align-self:flex-start" data-go="missions">Got it. Show me the missions!</button>
     </section>`;
   }else if(tab==="missions"){
-    const m=motd(),vis=S.chores.filter(c=>(parent||!c.off)&&(!who||!c.kid||c.kid===who));
+    const m=motd(),req=new Set(reqIds(me.role==="kid"?me.id:who)),vis=S.chores.filter(c=>(parent||!c.off)&&(!who||!c.kid||c.kid===who||req.has(c.id)));
     const kidOf=id=>id&&S.kids.find(k=>k.id===id);
-    const card=c=>{const k=kidOf(c.kid);return `<button id="m-${c.id}" class="card${k?" mine":""}${c.off?" off":""}${spot===c.id?" spot":""}" data-chore="${c.id}" ${k?kidStyle(k):""}><span class="t">${esc(c.name)}</span><span class="cardfoot"><span class="pill">+${c.xp} ★</span>${me.role==="kid"&&S.done[doneKey(me.id,c.id)]?(S.done[doneKey(me.id,c.id)]==="p"?`<span class="status wait">Waiting</span>`:`<span class="status">Done ✓</span>`):""}${k?`<span class="tag"><span class="em">${svg(k.emblem)}</span>${esc(k.name)}</span>`:""}</span>${parent?`<span class="cardctl"><span class="tgl" data-toggle="${c.id}" role="switch" aria-checked="${!c.off}" aria-label="Mission on or off"><i></i><b>${c.off?"Off":"On"}</b></span><span class="del" data-editchore="${c.id}" role="button">Edit</span></span>`:""}</button>`};
+    const card=c=>{const k=kidOf(c.kid);return `<button id="m-${c.id}" class="card${k?" mine":""}${c.off?" off":""}${spot===c.id?" spot":""}" data-chore="${c.id}" ${k?kidStyle(k):""}><span class="t">${esc(c.name)}</span><span class="cardfoot"><span class="pill">+${c.xp} ★</span>${req.has(c.id)?`<span class="status req">Required</span>`:""}${me.role==="kid"&&S.done[doneKey(me.id,c.id)]?(S.done[doneKey(me.id,c.id)]==="p"?`<span class="status wait">Waiting</span>`:`<span class="status">Done ✓</span>`):""}${k?`<span class="tag"><span class="em">${svg(k.emblem)}</span>${esc(k.name)}</span>`:""}</span>${parent?`<span class="cardctl"><span class="tgl" data-toggle="${c.id}" role="switch" aria-checked="${!c.off}" aria-label="Mission on or off"><i></i><b>${c.off?"Off":"On"}</b></span><span class="del" data-editchore="${c.id}" role="button">Edit</span></span>`:""}</button>`};
     v.innerHTML=`<section>
      ${pendingBox()}
+     ${parent&&!who?ordersSummary():ordersBox(me.role==="kid"?me.id:who)}
      ${m&&vis.includes(m)?`<button class="motd" data-chore="${m.id}" data-x2="1"><div><p class="eyebrow">Today's special mission</p><div class="t">${esc(m.name)}</div><small>${m.xp*2} stars · double today only${kidOf(m.kid)?` · ${esc(kidOf(m.kid).name)}'s mission`:""}</small></div><span class="x2">×2</span></button>`:""}
      <div><p class="eyebrow" style="margin-bottom:8px">Show missions for</p><div class="chips"><button class="chip" data-who="" aria-pressed="${!who}">Everyone</button>${S.kids.map(k=>`<button class="chip" data-who="${k.id}" ${kidStyle(k)} aria-pressed="${who===k.id}"><span class="em">${svg(k.emblem)}</span>${esc(k.name)}</button>`).join("")}</div></div>
      <button class="spinbtn" id="spinBtn"><span class="spinic"></span><span><b>Can't decide?</b> Spin the wheel!</span></button>
@@ -443,7 +510,8 @@ let wheel=null;
 function spinPick(){sheet(`<p class="eyebrow">Spin the wheel</p><h2>Who's spinning?</h2><div class="who">${S.kids.map(k=>whoBtn(k,"data-spinkid",false,"")).join("")}</div><button class="btn ghost" data-close>Cancel</button>`)}
 function spinWheel(kidId){
   const k=S.kids.find(k=>k.id===kidId);
-  let list=S.chores.filter(c=>!c.off&&(!c.kid||c.kid===kidId)&&!S.done[doneKey(kidId,c.id)]);
+  const reqLeft=ordersFor(kidId).filter(c=>!S.done[doneKey(kidId,c.id)]);
+  let list=reqLeft.length?reqLeft:S.chores.filter(c=>!c.off&&(!c.kid||c.kid===kidId)&&!S.done[doneKey(kidId,c.id)]);
   if(!list.length){sheet(`<p class="eyebrow">Spin the wheel</p><h2>${esc(k.name)}, you did every mission today!</h2><p class="note">That's a legend move. Check back tomorrow.</p><button class="btn" data-close>Hooah!</button>`);return}
   list=list.sort(()=>Math.random()-.5).slice(0,10);
   wheel={kid:kidId,list,rot:0,spinning:false,pick:null};
@@ -656,7 +724,7 @@ function askWho(choreId,x2){
   const c=S.chores.find(c=>c.id===choreId);if(!c)return;
   const pts=c.xp*(x2?2:1);
   sheet(`<p class="eyebrow">Mission complete?</p><h2>${esc(c.name)} · +${pts} ★</h2><p class="note">${isParent()?"Who did it?":"Did you finish it for real? Tap your name."}${!isParent()&&S.settings.approve?" Mom or Dad will approve it.":""}</p>
-   <div class="who">${S.kids.filter(k=>isParent()||k.id===me.id).map(k=>{const used=S.done[doneKey(k.id,c.id)];const notMine=c.kid&&c.kid!==k.id;return whoBtn(k,"data-award",used||notMine,used==="p"?"waiting":used?"done today":notMine?"not assigned":"")}).join("")}</div>
+   <div class="who">${S.kids.filter(k=>isParent()||k.id===me.id).map(k=>{const used=S.done[doneKey(k.id,c.id)];const notMine=c.kid&&c.kid!==k.id&&!reqIds(k.id).includes(c.id);return whoBtn(k,"data-award",used||notMine,used==="p"?"waiting":used?"done today":notMine?"not assigned":"")}).join("")}</div>
    <button class="btn ghost" data-close>Cancel</button>`);
   const s=document.getElementById("scrim");s.dataset.chore=choreId;s.dataset.pts=pts;s.dataset.x2=x2?"1":"";
 }
@@ -749,6 +817,12 @@ function tick(){
 }
 document.addEventListener("click",e=>{
   const t=e.target;
+  if(t.closest("#assignBtn,#assignBtn2")){clearArmed=false;assignSheet();return}
+  const od=t.closest("[data-ord]");if(od){const[kid,ch]=od.dataset.ord.split("|");S.orders=S.orders||{};const l=S.orders[kid]||[],on=!l.includes(ch);
+    S.orders[kid]=on?[...l,ch]:l.filter(x=>x!==ch);if(on){const c=S.chores.find(c=>c.id===ch);if(c)c.off=false}clearArmed=false;assignSheet(true);render();
+    act("orders",{kid,chore:ch,on}).then(()=>{if(document.querySelector(".achip"))assignSheet(true)});return}
+  if(t.closest("#ordClear")){if(!clearArmed){clearArmed=true;assignSheet(true);return}clearArmed=false;S.orders={};assignSheet(true);render();
+    act("orders",{clear:true}).then(()=>{if(document.querySelector(".achip"))assignSheet(true);toast("All required chores cleared")});return}
   const tg=t.closest("[data-toggle]");if(tg){const c=S.chores.find(c=>c.id===tg.dataset.toggle);if(c){c.off=!c.off;save();render();toast(c.off?`${c.name}: turned off`:`${c.name}: back on`)}return}
   const offc=t.closest(".card.off[data-chore]");if(offc){toast("This mission is turned off. Flip it on first.");return}
   const ed=t.closest("[data-editchore]");if(ed){editChore(ed.dataset.editchore);return}
@@ -772,7 +846,7 @@ document.addEventListener("click",e=>{
   const sk=t.closest("[data-spinkid]");if(sk){spinWheel(sk.dataset.spinkid);return}
   if(t.closest("#spinGo")){spinGo();return}
   if(t.id==="spinAgain"){spinGo();return}
-  if(t.id==="spinAccept"){const c=wheel&&wheel.pick;if(wheel&&wheel.spinning)return;closeSheet();if(c){spot=c.id;if(who&&c.kid&&c.kid!==who)who=null;render();const el=document.getElementById("m-"+c.id);if(el)el.scrollIntoView({behavior:"smooth",block:"center"});setTimeout(()=>{spot=null;const e2=document.getElementById("m-"+c.id);if(e2)e2.classList.remove("spot")},6000)}return}
+  if(t.id==="spinAccept"){const c=wheel&&wheel.pick;if(wheel&&wheel.spinning)return;closeSheet();if(c){spot=c.id;if(who&&c.kid&&c.kid!==who&&!reqIds(who).includes(c.id))who=null;render();const el=document.getElementById("m-"+c.id);if(el)el.scrollIntoView({behavior:"smooth",block:"center"});setTimeout(()=>{spot=null;const e2=document.getElementById("m-"+c.id);if(e2)e2.classList.remove("spot")},6000)}return}
   const tb=t.closest("nav button");if(tb){tab=tb.dataset.tab;render();return}
   if(t.id==="helpBtn"){tab=tab==="about"?"missions":"about";render();scrollTo(0,0);return}
   const go=t.closest("[data-go]");if(go){tab=go.dataset.go;render();scrollTo(0,0);return}
@@ -780,7 +854,7 @@ document.addEventListener("click",e=>{
   const em=t.closest("[data-emblem]");if(em){S.kids.find(k=>k.id===em.dataset.kid).emblem=em.dataset.emblem;save();render();return}
   const aw=t.closest("[data-award]");if(aw){const s=document.getElementById("scrim");award(aw.dataset.award,s.dataset.chore,+s.dataset.pts,s.dataset.x2);return}
   const by=t.closest("[data-buy]");if(by){const s=document.getElementById("scrim");buyIt(by.dataset.buy,s.dataset.reward);return}
-  const ch=t.closest(".card[data-chore],.motd");if(ch){askWho(ch.dataset.chore,ch.dataset.x2);return}
+  const ch=t.closest(".card[data-chore],.motd,.orow[data-chore]");if(ch){askWho(ch.dataset.chore,ch.dataset.x2);return}
   const rw=t.closest(".card[data-reward]");if(rw){buy(rw.dataset.reward);return}
   if(t.closest("[data-close]")||t.id==="scrim"){if(wheel&&wheel.spinning)return;closeSheet();return}
   if(t.id==="parentBtn"){parent=!parent;render();return}
