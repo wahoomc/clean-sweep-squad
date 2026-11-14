@@ -58,6 +58,51 @@ async function getKV(db, k) {
   return r ? { v: JSON.parse(r.v), rev: r.rev } : null;
 }
 
+// ---------- one-time chore update: the family whiteboard list (Nov 2026) ----------
+// Adds these missions (switched on, assigned by kid name), updates any with the same name,
+// and switches off the older missions they replace. Runs once per squad, then never again.
+const WHITEBOARD = [
+  ["Dry mop downstairs", 15, "Downstairs", "William"],
+  ["Wet mop downstairs", 20, "Downstairs", "Isabella"],
+  ["Sweep kitchen, bathroom & back room", 15, "Downstairs", "Margaret"],
+  ["Wet mop kitchen, bathroom & back room", 20, "Downstairs", "Isabella"],
+  ["Dust living room", 10, "Downstairs", "Margaret"],
+  ["Dust dining room", 10, "Downstairs", "Margaret"],
+  ["Wash front door & fridge", 15, "Downstairs", "William"],
+  ["Wash light switches", 10, "Downstairs", "William"],
+  ["Wash doorknobs", 10, "Downstairs", "Isabella"],
+  ["Upstairs bathroom sink", 10, "Upstairs", "Margaret"],
+  ["Downstairs bathroom sink & outside of toilet", 15, "Downstairs", "William"],
+  ["Clean inside both toilets", 20, "Downstairs", "Isabella"],
+  ["Change sheets", 15, "Upstairs", "Isabella"],
+  ["Fold clothes", 10, "Upstairs", "Isabella"],
+  ["Homework", 10, "Downstairs", "Margaret"],
+  ["Change sheets", 15, "Upstairs", "William"],
+];
+const WHITEBOARD_REPLACES = ["Clean the door knobs", "Clean the downstairs toilet", "Clean the upstairs toilet", "Clean the bathroom sink", "Fold a load of laundry"];
+let whiteboardDone = false;
+async function addWhiteboard(db) {
+  if (whiteboardDone) return;
+  const st = await getKV(db, "state");
+  if (!st) return; // squad not set up yet; try again on a later request
+  const S = st.v;
+  if (S.whiteboard1) { whiteboardDone = true; return; }
+  const norm = s => String(s).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const kidId = n => (S.kids.find(k => norm(k.name) === norm(n)) || {}).id || null;
+  const ids = new Set(S.chores.map(c => c.id));
+  WHITEBOARD.forEach(([name, xp, area, who], i) => {
+    const kid = kidId(who);
+    const same = S.chores.find(c => norm(c.name) === norm(name) && (!c.kid || c.kid === kid));
+    if (same) { same.kid = kid; same.area = area; same.off = false; return; }
+    let id = "wb" + (i + 1); while (ids.has(id)) id += "x"; ids.add(id);
+    S.chores.push({ id, name, xp, area, kid, off: false });
+  });
+  for (const c of S.chores) if (WHITEBOARD_REPLACES.some(n => norm(n) === norm(c.name))) c.off = true;
+  S.whiteboard1 = true;
+  const r = await db.prepare("UPDATE kv SET v = ?, rev = rev + 1 WHERE k = 'state' AND rev = ?").bind(JSON.stringify(S), st.rev).run();
+  if (r.meta.changes === 1) whiteboardDone = true; // otherwise someone saved at the same moment; retry next request
+}
+
 // ---------- cleaning what browsers send ----------
 const str = (s, max) => String(s ?? "").replace(/[\u0000-\u001f]/g, "").trim().slice(0, max);
 const int = (n, lo, hi, d) => { n = Math.round(+n); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
@@ -235,6 +280,7 @@ export async function onRequest({ request, env, params }) {
   const route = (params.path || []).join("/"), method = request.method;
   try {
     await init(db);
+    try { await addWhiteboard(db); } catch (e) { console.error("whiteboard update", e); }
     if (route === "roster" && method === "GET") {
       const [st, users] = [await getKV(db, "state"), await getKV(db, "users")];
       if (!st || !users) return json({ setup: false });
