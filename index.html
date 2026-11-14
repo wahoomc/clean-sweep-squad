@@ -273,6 +273,51 @@ canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:50;width:100%;heigh
 .achip{font:inherit;font-weight:700;font-size:.9rem;display:inline-flex;align-items:center;gap:6px;padding:4px 12px 4px 4px;border-radius:999px;border:2px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
 .achip[aria-pressed="true"]{border-color:var(--kid);background:var(--kid);color:#fff}
 .achip[aria-pressed="true"] .em{background:rgba(255,255,255,.28)}
+.game{border-color:var(--accent);border-width:3px}
+.game h2{margin:0;font-size:1.35rem;text-wrap:balance}
+.gtally,.gres{display:flex;gap:8px;flex-wrap:wrap}
+.gchip{display:inline-flex;align-items:center;gap:6px;font-weight:700;padding:3px 10px 3px 3px;border-radius:999px;background:var(--bg);border:2px solid var(--kid)}
+.gchip .em{width:24px;height:24px;border-radius:50%;background:var(--kid);display:grid;place-items:center;color:#fff}
+.gchip .em svg{width:14px;height:14px}
+.gchip small{color:var(--muted);font-weight:600}
+.gnext{margin:0;color:var(--muted);font-weight:600;font-size:.92rem}
+.gpool{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.gpick{font:inherit;color:var(--ink);background:var(--panel);border:2px solid var(--line);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;text-align:left;cursor:pointer}
+button.gpick:not(:disabled):hover{border-color:var(--accent)}
+.gpick:disabled{cursor:default;opacity:.6}
+.gpick .t{font-weight:600}
+.gpick .pill{align-self:flex-start}
+.gpick small{color:var(--muted);font-weight:600}
+.gpick small.up{color:var(--good)}
+.gpick.bounty{cursor:default}
+.gk{display:flex;gap:6px;flex-wrap:wrap}
+.gk .btn{padding:6px 14px}
+.glot{display:flex;flex-direction:column;gap:6px;padding:14px;border-radius:16px;background:var(--bg)}
+.glotrow{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.gprice{display:flex;flex-direction:column;font-size:1.1rem}
+.gprice b{font-size:2.4rem;line-height:1;font-variant-numeric:tabular-nums}
+.gprice small{font-size:.9rem;color:var(--muted);font-weight:600}
+.gcount{min-width:64px;height:64px;border-radius:50%;display:grid;place-items:center;font-size:1.7rem;font-weight:800;border:4px solid var(--ink);font-variant-numeric:tabular-nums}
+.gcount.hot{border-color:var(--accent);color:var(--accent)}
+.gcount.small{display:inline;min-width:0;height:auto;border:0;font-size:inherit;font-weight:800}
+.gbids{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.gbid{background:var(--kid)!important;color:#fff!important}
+.gwin{margin:0;font-weight:800;color:var(--kid)}
+.gres>div{flex:1 1 180px;min-width:0;display:flex;flex-direction:column;gap:6px}
+.gres ul{margin:0;padding-left:18px}
+.gres li b{color:var(--good)}
+.gres li.none{color:var(--muted);list-style:none;margin-left:-18px}
+.gmodes{display:grid;gap:8px}
+.gmode{font:inherit;text-align:left;color:var(--ink);background:var(--bg);border:2px solid var(--line);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;cursor:pointer}
+.gmode small{color:var(--muted)}
+.gmode[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset}
+.gchores{display:flex;flex-wrap:wrap;gap:6px}
+.gch{font:inherit;display:inline-flex;align-items:baseline;gap:6px;padding:6px 12px;border-radius:999px;border:2px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+.gch small{color:var(--muted)}
+.gch[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--panel)}
+.gch[aria-pressed="true"] small{color:var(--panel);opacity:.8}
+.greplace{display:flex;gap:8px;align-items:flex-start;font-weight:600}
+.note.warn{color:var(--accent);font-weight:700}
 #demoBar{position:fixed;top:0;left:0;right:0;z-index:45;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;background:var(--ink);color:var(--panel);font-size:.9rem;line-height:1.3;text-align:center;padding:calc(8px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 8px max(16px,env(safe-area-inset-left,0px))}
 #demoBar b{color:var(--gold)}
 #demoBar button{font:inherit;font-weight:700;border:2px solid var(--gold);background:transparent;color:var(--gold);border-radius:999px;padding:4px 12px;cursor:pointer}
@@ -295,7 +340,7 @@ html.demo #gate{top:var(--demoH,44px)}
     <button role="tab" data-tab="squad" aria-selected="false">Squad</button>
     <button role="tab" data-tab="px" aria-selected="false">Store</button>
   </nav>
-  <div class="pbar" id="pbar" hidden><span><b>Parent tools are on.</b> Edit missions, rewards and PINs.</span><span style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost" id="assignBtn2">Assign chores</button><button class="btn ghost" id="pinChange">Squad settings</button><button class="btn" id="tutBtn"><span class="pi"></span>Watch the parent tutorial</button></span></div>
+  <div class="pbar" id="pbar" hidden><span><b>Parent tools are on.</b> Edit missions, rewards and PINs.</span><span style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="gameBtn">Chore Day game</button><button class="btn ghost" id="assignBtn2">Assign chores</button><button class="btn ghost" id="pinChange">Squad settings</button><button class="btn" id="tutBtn"><span class="pi"></span>Watch the parent tutorial</button></span></div>
   <main id="view"></main>
 </div>
 <div id="gate" hidden></div>
@@ -388,7 +433,8 @@ function motd(){const on=S.chores.filter(c=>!c.off);let h=0;for(const ch of toda
 const doneKey=(kid,ch)=>today()+"|"+kid+"|"+ch;
 // ---------- Orders: chores a parent marks required for a kid (kept until a parent changes them) ----------
 const reqIds=kid=>(kid&&S.orders&&S.orders[kid])||[];
-const ordersFor=kid=>reqIds(kid).map(id=>S.chores.find(c=>c.id===id)).filter(c=>c&&!c.off).sort((a,b)=>a.xp-b.xp||a.name.localeCompare(b.name)); // quick wins first
+const priceFor=(kid,c,x2)=>{const d=S.deals&&S.deals[kid+"|"+c.id];return d!=null?d:c.xp*(x2?2:1)};
+const ordersFor=kid=>reqIds(kid).map(id=>S.chores.find(c=>c.id===id)).filter(c=>c&&!c.off).sort((a,b)=>priceFor(kid,a)-priceFor(kid,b)||a.name.localeCompare(b.name)); // quick wins first
 const ordState=(kid,c)=>{const d=S.done[doneKey(kid,c.id)];return d==="p"?"wait":d?"done":"todo"};
 function ordersBox(kid){
   const k=S.kids.find(k=>k.id===kid),list=ordersFor(kid);if(!k||!list.length)return"";
@@ -397,7 +443,7 @@ function ordersBox(kid){
   return `<div class="about orders" ${kidStyle(k)}><p class="eyebrow">${mine?"Today's orders":esc(k.name)+"'s orders"} · ${n} of ${list.length} done</p>
    <h2>${sent===list.length?(n===list.length?"All orders complete!":"All orders turned in!"):mine?"Quick wins first. Start at the top.":"Quick wins first"}</h2>
    <div class="bar"><i style="width:${Math.round(n/list.length*100)}%"></i></div>
-   <ol class="olist">${list.map((c,i)=>`<li><button class="orow ${st[i]}" data-chore="${c.id}" ${st[i]==="todo"?"":"disabled"}><b class="onum">${st[i]==="done"?svg("check"):i+1}</b><span class="t">${esc(c.name)}</span><span class="pill">+${c.xp} ★</span>${st[i]==="done"?`<span class="status">Done</span>`:st[i]==="wait"?`<span class="status wait">Waiting</span>`:i===first?`<span class="status go">Start here</span>`:""}</button></li>`).join("")}</ol>
+   <ol class="olist">${list.map((c,i)=>`<li><button class="orow ${st[i]}" data-chore="${c.id}" ${st[i]==="todo"?"":"disabled"}><b class="onum">${st[i]==="done"?svg("check"):i+1}</b><span class="t">${esc(c.name)}</span><span class="pill">+${priceFor(kid,c)} ★</span>${st[i]==="done"?`<span class="status">Done</span>`:st[i]==="wait"?`<span class="status wait">Waiting</span>`:i===first?`<span class="status go">Start here</span>`:""}</button></li>`).join("")}</ol>
    <p class="note">${sent===list.length?"Anything else on the board is bonus stars.":"Finish these first. Everything else on the board is bonus stars."}</p></div>`;
 }
 function ordersSummary(){
@@ -419,6 +465,83 @@ function assignSheet(keepScroll){
   if(prev)document.querySelector(".sheet").scrollTop=prev;
 }
 let clearArmed=false;
+// ---------- Chore Day games ----------
+const GAME_INFO={draft:["Draft","Take turns picking chores, like picking teams in gym class. Snake order: 1-2-3, then 3-2-1. Who picks first is random."],
+ auction:["Auction","One chore at a time. Bid the stars down. The lowest bid wins when the countdown runs out. Bids can't go below half price."],
+ bounty:["Rising bounty","First come, first served. Any chore nobody has taken gains 2 stars every 10 minutes, up to double."]};
+const kidById=id=>S.kids.find(k=>k.id===id);
+const chip=(k,extra)=>k?`<span class="gchip" ${kidStyle(k)}><span class="em">${svg(k.emblem)}</span>${esc(k.name)}${extra||""}</span>`:"";
+const bountyPrice=(g,c)=>Math.min(c.xp*2,c.xp+2*Math.floor(Math.max(0,srvNow()-g.started)/600000));
+const snakeKid=g=>{const n=g.order.length,r=Math.floor(g.turn/n),i=g.turn%n;return r%2?g.order[n-1-i]:g.order[i]};
+function gameBox(){
+  const g=S.game;if(!g)return"";
+  const P=isParent(),mine=me.role==="kid"?me.id:null,playing=!mine||g.kids.includes(mine),ch=id=>S.chores.find(c=>c.id===id);
+  const tally=`<div class="gtally">${g.kids.map(id=>{const r=g.results.filter(x=>x.kid===id);return chip(kidById(id),`<small>${r.length} chore${r.length===1?"":"s"} · ${r.reduce((a,x)=>a+x.stars,0)} ★</small>`)}).join("")}</div>`;
+  let body="";
+  if(g.status==="done"){
+    body=`<h2>Chore Day is set!</h2>
+     <div class="gres">${g.kids.map(id=>{const k=kidById(id),r=g.results.filter(x=>x.kid===id);return `<div ${kidStyle(k)}>${chip(k)}<ul>${r.map(x=>`<li>${esc(ch(x.chore)?.name||"Mission")} <b>+${x.stars} ★</b></li>`).join("")||"<li class='none'>No chores this round</li>"}</ul></div>`}).join("")}</div>
+     ${g.unsold.length||g.pool.length?`<p class="note"><b>Nobody took:</b> ${[...g.unsold,...g.pool].map(id=>esc(ch(id)?.name||"")).join(", ")}.${P?" Use Assign chores to hand these out.":""}</p>`:""}
+     <p class="note">${mine?"Your chores are in Today's orders below.":"Each kid's chores are in their Today's orders."}</p>
+     ${P?`<div class="addform"><button class="btn" id="gameClose">Close game</button></div>`:""}`;
+  }else if(!playing){
+    body=`<h2>${GAME_INFO[g.mode][0]} in progress</h2><p class="note">You're not in this round. Your chores stay the same.</p>`;
+  }else if(g.mode==="draft"){
+    const tk=snakeKid(g),k=kidById(tk),myTurn=mine===tk,next=[1,2,3].map(n=>kidById(snakeKid({...g,turn:g.turn+n}))).filter(Boolean);
+    body=`<h2>${myTurn?`Your pick, ${esc(k.name)}!`:`${esc(k?.name||"")} is picking${P?"":"…"}`}</h2>
+     <p class="gnext">Round ${Math.floor(g.turn/g.order.length)+1} · Up next: ${next.reduce((a,x)=>{const l=a[a.length-1];if(l&&l.k===x)l.n++;else a.push({k:x,n:1});return a},[]).map(o=>esc(o.k.name)+(o.n>1?` (${o.n} picks)`:"")).join(", ")}</p>
+     <div class="gpool">${g.pool.map(id=>{const c=ch(id);return c?`<button class="gpick" data-gpick="${c.id}" ${myTurn||P?"":"disabled"}><span class="t">${esc(c.name)}</span><span class="pill">+${c.xp} ★</span>${P&&!myTurn?`<small>Pick for ${esc(k.name)}</small>`:""}</button>`:""}).join("")}</div>
+     ${P?`<div class="addform"><button class="btn ghost" id="gameSkip">Skip ${esc(k.name)}'s turn</button><button class="btn ghost" id="gameEnd">End game</button></div>`:""}`;
+  }else if(g.mode==="auction"){
+    const L=g.lot,c=L&&ch(L.chore);
+    if(!L||!c)body=`<h2>Wrapping up…</h2>`;
+    else{
+      const floor=Math.ceil(L.start/2),max=L.leader?L.price-1:L.start,lead=kidById(L.leader),can=max>=floor;
+      const opts=[max,max-2,max-5].filter((p,i,a)=>p>=floor&&a.indexOf(p)===i);
+      const bidRow=id=>{const k=kidById(id);if(L.leader===id)return `<p class="gwin" ${kidStyle(k)}>${mine?"You're":esc(k.name)+" is"} winning at ${L.price} ★</p>`;
+        if(!can)return "";return `<div class="gbids" ${kidStyle(k)}>${P?chip(k):""}${(P?opts.slice(0,2):opts).map(p=>`<button class="btn gbid" data-gbid="${id}|${p}">${L.leader||p<L.start?`Bid ${p} ★`:`Take it for ${p} ★`}</button>`).join("")}</div>`};
+      body=`<div class="glot">
+        <p class="eyebrow">Up for bid · ${g.pool.length} left</p>
+        <h2>${esc(c.name)}</h2>
+        <div class="glotrow"><span class="gprice"><b>${L.price} ★</b><small>${lead?`${esc(lead.name)} has it`:`Starts at ${L.start} · no bids yet`}</small></span><span class="gcount" data-ends="${L.ends}">${Math.max(0,Math.ceil((L.ends-srvNow())/1000))}</span></div>
+        <p class="gnext">Lowest bid wins · can't go below ${floor} ★${!can&&lead?` · ${esc(lead.name)} has the lowest possible bid`:""}</p></div>
+       ${P?g.kids.map(bidRow).join(""):bidRow(mine)}
+       ${g.pool.length>1?`<p class="gnext">Next up: ${g.pool.slice(1,4).map(id=>esc(ch(id)?.name||"")).join(", ")}${g.pool.length>4?"…":""}</p>`:""}
+       ${P?`<div class="addform"><button class="btn ghost" id="gameSkip">Close bidding now</button><button class="btn ghost" id="gameEnd">End game</button></div>`:""}`;
+    }
+  }else{
+    const nextAt=g.started+(Math.floor((srvNow()-g.started)/600000)+1)*600000;
+    body=`<h2>Grab a chore!</h2><p class="gnext">Untaken chores go up 2 ★ every 10 minutes. Next raise in <span class="gcount small" data-ends="${nextAt}" data-mmss="1"></span></p>
+     <div class="gpool">${g.pool.map(id=>{const c=ch(id);if(!c)return"";const p=bountyPrice(g,c);return `<div class="gpick bounty"><span class="t">${esc(c.name)}</span><span class="pill">+${p} ★</span>${p>c.xp?`<small class="up">was ${c.xp}</small>`:""}
+       <span class="gk">${P?g.kids.map(id=>{const k=kidById(id);return `<button class="achip" data-ggrab="${id}|${c.id}" ${kidStyle(k)}><span class="em">${svg(k.emblem)}</span>${esc(k.name)}</button>`}).join(""):`<button class="btn" data-ggrab="${mine}|${c.id}">Grab it</button>`}</span></div>`}).join("")}</div>
+     ${P?`<div class="addform"><button class="btn ghost" id="gameEnd">End game</button></div>`:""}`;
+  }
+  return `<div class="about game ${g.status}"><p class="eyebrow">Chore Day · ${GAME_INFO[g.mode][0]}${g.status==="live"?` · started by ${esc(g.by)}`:""}</p>${tally}${body}</div>`;
+}
+let gset=null;
+function gameSheet(keepScroll){
+  const prev=keepScroll?document.querySelector(".sheet")?.scrollTop||0:0;
+  if(!gset)gset={mode:"draft",chores:new Set(S.chores.filter(c=>!c.off).map(c=>c.id)),kids:new Set(S.kids.map(k=>k.id)),replace:true};
+  const live=S.game&&S.game.status==="live";
+  sheet(`<p class="eyebrow">Parent tools</p><h2>Start a Chore Day game</h2>
+   ${live?`<p class="note warn">A ${GAME_INFO[S.game.mode][0]} is running now. Starting a new game ends it.</p>`:""}
+   <p class="eyebrow">1 · Pick the game</p>
+   <div class="gmodes">${Object.entries(GAME_INFO).map(([m,[n,d]])=>`<button class="gmode" data-gmode="${m}" aria-pressed="${gset.mode===m}"><b>${n}</b><small>${d}</small></button>`).join("")}</div>
+   <p class="eyebrow">2 · Who's playing</p>
+   <div class="akids">${S.kids.map(k=>`<button class="achip" data-gkid="${k.id}" aria-pressed="${gset.kids.has(k.id)}" ${kidStyle(k)}><span class="em">${svg(k.emblem)}</span>${esc(k.name)}</button>`).join("")}</div>
+   <p class="eyebrow">3 · Chores that need doing today · ${gset.chores.size} picked</p>
+   <div class="addform"><button class="btn ghost" data-gall="on">All switched-on chores</button><button class="btn ghost" data-gall="none" style="border-color:var(--line);color:var(--muted)">None</button></div>
+   ${AREAS.map(([a])=>{const l=S.chores.filter(c=>c.area===a);return l.length?`<h3 class="ah">${a}</h3><div class="gchores">${l.map(c=>`<button class="gch" data-gch="${c.id}" aria-pressed="${gset.chores.has(c.id)}"><span>${esc(c.name)}</span><small>${c.xp} ★${c.off?" · off":""}</small></button>`).join("")}</div>`:""}).join("")}
+   <label class="greplace"><input type="checkbox" id="greplace" ${gset.replace?"checked":""}> Replace everyone's current required chores with this game's results</label>
+   <div class="addform" style="justify-content:space-between"><button class="btn ghost" data-close style="border-color:var(--line);color:var(--muted)">Cancel</button><button class="btn" id="gameStart">Start ${GAME_INFO[gset.mode][0]}</button></div>`);
+  if(prev)document.querySelector(".sheet").scrollTop=prev;
+}
+// live countdowns, and quick updates while a game is running
+setInterval(()=>{let due=false;document.querySelectorAll(".gcount[data-ends]").forEach(el=>{const ms=+el.dataset.ends-srvNow(),s=Math.max(0,Math.ceil(ms/1000));
+  el.textContent=el.dataset.mmss?`${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`:s;el.classList.toggle("hot",!el.dataset.mmss&&s<=5);if(ms<=0)due=true});
+  if(due&&Date.now()-(window._dueAt||0)>1500){window._dueAt=Date.now();refresh(true)}},250);
+setInterval(()=>{const g=S&&S.game;if(g&&g.status==="live"&&g.mode!=="bounty")refresh()},1500);
+setInterval(()=>{const g=S&&S.game;if(g&&g.status==="live"&&g.mode==="bounty")refresh()},6000);
 
 function strip(){
   document.getElementById("strip").innerHTML=S.kids.map(k=>`<div class="mini" ${kidStyle(k)}><span class="em">${svg(k.emblem)}</span><span class="n">${esc(k.name)}</span><span class="r">${RANKS[rankOf(k.xp)][1]}</span><span class="s"><span class="star">★</span> ${k.stars}</span></div>`).join("");
@@ -448,6 +571,12 @@ function render(){
       <ul class="ladder">${RANKS.map(r=>`<li><span>${r[1]}</span><small>${r[0]} ★</small></li>`).join("")}</ul></div>
      <div class="about"><h2>Collect your patches</h2><p>Patches are badges you keep forever. They show up on your card in the Squad tab.</p>
       <div class="phow">${PATCHES.map(p=>`<div><i>${svg(p[2])}</i><span><b>${p[1]}</b><br><small>${PATCH_HOW[p[0]]}</small></span></div>`).join("")}</div></div>
+     <div class="about"><h2>Chore Day games</h2><p>Some days Mom or Dad starts a game to hand out the chores. Whatever you win shows up in <b>Today's orders</b>.</p>
+      <ul class="steps rules" style="gap:6px">
+       <li><b class="num">1</b><span><b>Draft.</b> Take turns picking chores, like picking teams in gym class.</span></li>
+       <li><b class="num">2</b><span><b>Auction.</b> Bid the stars down. Whoever will do it for the fewest stars wins it, and that's what you earn.</span></li>
+       <li><b class="num">3</b><span><b>Rising bounty.</b> Grab any chore you want. The ones nobody takes are worth more stars the longer they sit.</span></li>
+      </ul></div>
      <div class="about"><h2>The Squad Store</h2><p>Spend your stars on rewards like screen time, picking dinner, or a date with Mom or Dad. <b>Mom or Dad approves every reward</b> before the stars come off. And don't worry: spending stars never lowers your rank. Your promotions are yours to keep.</p></div>
      <div class="about"><h2>Squad rules</h2><ul class="steps rules" style="gap:6px">
       <li><b class="num" style="background:var(--good)">${svg("check")}</b><span><b>Honesty first.</b> Only tap missions you really finished. Mom and Dad can see the log and undo anything.</span></li>
@@ -460,9 +589,10 @@ function render(){
   }else if(tab==="missions"){
     const m=motd(),req=new Set(reqIds(me.role==="kid"?me.id:who)),vis=S.chores.filter(c=>(parent||!c.off)&&(!who||!c.kid||c.kid===who||req.has(c.id)));
     const kidOf=id=>id&&S.kids.find(k=>k.id===id);
-    const card=c=>{const k=kidOf(c.kid);return `<button id="m-${c.id}" class="card${k?" mine":""}${c.off?" off":""}${spot===c.id?" spot":""}" data-chore="${c.id}" ${k?kidStyle(k):""}><span class="t">${esc(c.name)}</span><span class="cardfoot"><span class="pill">+${c.xp} ★</span>${req.has(c.id)?`<span class="status req">Required</span>`:""}${me.role==="kid"&&S.done[doneKey(me.id,c.id)]?(S.done[doneKey(me.id,c.id)]==="p"?`<span class="status wait">Waiting</span>`:`<span class="status">Done ✓</span>`):""}${k?`<span class="tag"><span class="em">${svg(k.emblem)}</span>${esc(k.name)}</span>`:""}</span>${parent?`<span class="cardctl"><span class="tgl" data-toggle="${c.id}" role="switch" aria-checked="${!c.off}" aria-label="Mission on or off"><i></i><b>${c.off?"Off":"On"}</b></span><span class="del" data-editchore="${c.id}" role="button">Edit</span></span>`:""}</button>`};
+    const card=c=>{const k=kidOf(c.kid);return `<button id="m-${c.id}" class="card${k?" mine":""}${c.off?" off":""}${spot===c.id?" spot":""}" data-chore="${c.id}" ${k?kidStyle(k):""}><span class="t">${esc(c.name)}</span><span class="cardfoot"><span class="pill">+${me.role==="kid"?priceFor(me.id,c):c.xp} ★</span>${req.has(c.id)?`<span class="status req">Required</span>`:""}${me.role==="kid"&&S.done[doneKey(me.id,c.id)]?(S.done[doneKey(me.id,c.id)]==="p"?`<span class="status wait">Waiting</span>`:`<span class="status">Done ✓</span>`):""}${k?`<span class="tag"><span class="em">${svg(k.emblem)}</span>${esc(k.name)}</span>`:""}</span>${parent?`<span class="cardctl"><span class="tgl" data-toggle="${c.id}" role="switch" aria-checked="${!c.off}" aria-label="Mission on or off"><i></i><b>${c.off?"Off":"On"}</b></span><span class="del" data-editchore="${c.id}" role="button">Edit</span></span>`:""}</button>`};
     v.innerHTML=`<section>
      ${pendingBox()}
+     ${gameBox()}
      ${parent&&!who?ordersSummary():ordersBox(me.role==="kid"?me.id:who)}
      ${m&&vis.includes(m)?`<button class="motd" data-chore="${m.id}" data-x2="1"><div><p class="eyebrow">Today's special mission</p><div class="t">${esc(m.name)}</div><small>${m.xp*2} stars · double today only${kidOf(m.kid)?` · ${esc(kidOf(m.kid).name)}'s mission`:""}</small></div><span class="x2">×2</span></button>`:""}
      <div><p class="eyebrow" style="margin-bottom:8px">Show missions for</p><div class="chips"><button class="chip" data-who="" aria-pressed="${!who}">Everyone</button>${S.kids.map(k=>`<button class="chip" data-who="${k.id}" ${kidStyle(k)} aria-pressed="${who===k.id}"><span class="em">${svg(k.emblem)}</span>${esc(k.name)}</button>`).join("")}</div></div>
@@ -593,7 +723,10 @@ async function api(path,body){
   if(!r.ok)throw Object.assign(new Error(j.error||"Something went wrong. Try again."),{status:r.status});
   return j;
 }
-function take(j){if(j.token)setToken(j.token);if(j.state){S=j.state;REV=j.rev;fixChores()}if(j.me)me=j.me;if(j.pins)PINS=j.pins}
+let SKEW=0,GAME_SEEN=null;const srvNow=()=>Date.now()+SKEW;
+function take(j){if(j.token)setToken(j.token);if(j.now)SKEW=j.now-Date.now();if(j.state){S=j.state;REV=j.rev;fixChores();
+  const g=S.game;if(g&&g.status==="live"&&GAME_SEEN!==null&&GAME_SEEN!==g.id&&me&&(me.role==="parent"||g.kids.includes(me.id))){tab="missions";setTimeout(()=>toast(`Chore Day is on: ${GAME_INFO[g.mode][0]}!`),300)}
+  GAME_SEEN=g?g.id:"none"}if(j.me)me=j.me;if(j.pins)PINS=j.pins}
 const typing=()=>{const a=document.activeElement;return a&&/INPUT|SELECT|TEXTAREA/.test(a.tagName)&&a.closest("#view")};
 const busyScreen=()=>document.getElementById("scrim")||document.querySelector(".promo");
 async function act(type,data){
@@ -722,7 +855,7 @@ const whoBtn=(k,attr,dis,extra)=>`<button ${attr}="${k.id}" ${kidStyle(k)} ${dis
 
 function askWho(choreId,x2){
   const c=S.chores.find(c=>c.id===choreId);if(!c)return;
-  const pts=c.xp*(x2?2:1);
+  const pts=me.role==="kid"?priceFor(me.id,c,x2):c.xp*(x2?2:1);
   sheet(`<p class="eyebrow">Mission complete?</p><h2>${esc(c.name)} · +${pts} ★</h2><p class="note">${isParent()?"Who did it?":"Did you finish it for real? Tap your name."}${!isParent()&&S.settings.approve?" Mom or Dad will approve it.":""}</p>
    <div class="who">${S.kids.filter(k=>isParent()||k.id===me.id).map(k=>{const used=S.done[doneKey(k.id,c.id)];const notMine=c.kid&&c.kid!==k.id&&!reqIds(k.id).includes(c.id);return whoBtn(k,"data-award",used||notMine,used==="p"?"waiting":used?"done today":notMine?"not assigned":"")}).join("")}</div>
    <button class="btn ghost" data-close>Cancel</button>`);
@@ -818,6 +951,20 @@ function tick(){
 document.addEventListener("click",e=>{
   const t=e.target;
   if(t.closest("#assignBtn,#assignBtn2")){clearArmed=false;assignSheet();return}
+  if(t.closest("#gameBtn")){gset=null;gameSheet();return}
+  const gm=t.closest("[data-gmode]");if(gm){gset.mode=gm.dataset.gmode;gameSheet(true);return}
+  const gk=t.closest("[data-gkid]");if(gk){const id=gk.dataset.gkid;gset.kids.has(id)?gset.kids.delete(id):gset.kids.add(id);gameSheet(true);return}
+  const gc=t.closest("[data-gch]");if(gc){const id=gc.dataset.gch;gset.chores.has(id)?gset.chores.delete(id):gset.chores.add(id);gameSheet(true);return}
+  const ga=t.closest("[data-gall]");if(ga){gset.chores=ga.dataset.gall==="on"?new Set(S.chores.filter(c=>!c.off).map(c=>c.id)):new Set();gameSheet(true);return}
+  if(t.id==="greplace"){gset.replace=t.checked;return}
+  if(t.closest("#gameStart")){if(!gset.kids.size){toast("Pick at least one cadet to play");return}if(!gset.chores.size){toast("Pick at least one chore");return}
+    const g=gset;closeSheet();tab="missions";act("game_start",{mode:g.mode,kids:[...g.kids],chores:[...g.chores],replace:g.replace});return}
+  const gp=t.closest("[data-gpick]");if(gp){gp.disabled=true;act("game_pick",{chore:gp.dataset.gpick}).then(j=>{if(j&&j.result){const k=kidById(j.result.kid),c=S.chores.find(c=>c.id===gp.dataset.gpick);toast(`${k?.name||""} picked ${c?.name||"it"}`)}});return}
+  const gb=t.closest("[data-gbid]");if(gb){const[kid,p]=gb.dataset.gbid.split("|");document.querySelectorAll("[data-gbid]").forEach(b=>b.disabled=true);act("game_bid",{kid,price:+p});return}
+  const gg=t.closest("[data-ggrab]");if(gg){const[kid,ch]=gg.dataset.ggrab.split("|");gg.disabled=true;act("game_pick",{kid,chore:ch}).then(j=>{if(j&&j.result){const k=kidById(kid),c=S.chores.find(c=>c.id===ch);toast(`${k?.name||""} grabbed ${c?.name||"it"} for ${j.result.stars} ★`);burst(50,k?.color)}});return}
+  if(t.closest("#gameSkip")){act("game_skip");return}
+  if(t.closest("#gameEnd")){const b=t.closest("#gameEnd");if(!b.dataset.armed){b.dataset.armed="1";b.textContent="Tap again to end";return}act("game_end");return}
+  if(t.closest("#gameClose")){act("game_close");return}
   const od=t.closest("[data-ord]");if(od){const[kid,ch]=od.dataset.ord.split("|");S.orders=S.orders||{};const l=S.orders[kid]||[],on=!l.includes(ch);
     S.orders[kid]=on?[...l,ch]:l.filter(x=>x!==ch);if(on){const c=S.chores.find(c=>c.id===ch);if(c)c.off=false}clearArmed=false;assignSheet(true);render();
     act("orders",{kid,chore:ch,on}).then(()=>{if(document.querySelector(".achip"))assignSheet(true)});return}

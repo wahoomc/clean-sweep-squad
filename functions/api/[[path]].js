@@ -149,6 +149,43 @@ function grantBuy(S, k, name, cost, by) {
 }
 const pendingCost = (S, kid) => S.pending.filter(p => p.kid === kid && p.type === "buy").reduce((a, p) => a + p.cost, 0);
 
+// ---------- Chore Day games: a parent picks the chores and the game, kids win the chores ----------
+// Draft: snake order, random first pick. Auction: lowest bid wins, floor is half price.
+// Rising bounty: first come, first served, and untaken chores gain 2 stars every 10 minutes.
+// Every chore won goes into that kid's required list ("orders") at the stars they won it for ("deals").
+const OPEN_MS = 30000, BID_MS = 15000, BOUNTY_EVERY = 10 * 60 * 1000;
+const kidName = (S, id) => (S.kids.find(k => k.id === id) || {}).name || "someone";
+const snakeKid = g => { const n = g.order.length, r = Math.floor(g.turn / n), i = g.turn % n; return r % 2 ? g.order[n - 1 - i] : g.order[i]; };
+const bountyPrice = (g, c, now) => Math.min(c.xp * 2, c.xp + 2 * Math.floor(Math.max(0, now - g.started) / BOUNTY_EVERY));
+function finishGame(g, now) { g.status = "done"; g.lot = null; g.ended = now; }
+function winChore(S, g, choreId, kid, stars, now) {
+  g.pool = g.pool.filter(id => id !== choreId);
+  S.orders = S.orders || {}; S.deals = S.deals || {};
+  const l = S.orders[kid] || []; if (!l.includes(choreId)) l.push(choreId); S.orders[kid] = l;
+  S.deals[kid + "|" + choreId] = stars;
+  const c = S.chores.find(c => c.id === choreId); if (c) c.off = false;
+  g.results.push({ chore: choreId, kid, stars, at: now });
+  if (!g.pool.length && g.mode !== "auction") finishGame(g, now);
+}
+function nextLot(S, g, now) {
+  while (g.pool.length && !S.chores.some(c => c.id === g.pool[0])) g.pool.shift();
+  if (!g.pool.length) { finishGame(g, now); return; }
+  const c = S.chores.find(c => c.id === g.pool[0]);
+  g.lot = { chore: c.id, start: c.xp, price: c.xp, leader: null, ends: now + OPEN_MS, bids: 0 };
+}
+// Auctions run on a clock, so every request first settles any lot whose time ran out.
+function gameTick(S, now) {
+  const g = S.game; if (!g || g.status !== "live" || g.mode !== "auction") return false;
+  let changed = false, guard = 0;
+  while (g.lot && now >= g.lot.ends && guard++ < 200) {
+    const lot = g.lot, at = lot.ends;
+    if (lot.leader) winChore(S, g, lot.chore, lot.leader, lot.price, at);
+    else { g.pool = g.pool.filter(id => id !== lot.chore); g.unsold.push(lot.chore); }
+    g.lot = null; nextLot(S, g, at); changed = true;
+  }
+  return changed;
+}
+
 function apply(S, me, a) {
   const isParent = me.role === "parent";
   const needParent = () => { if (!isParent) throw new Oops("Only Mom or Dad can do that", 403); };
@@ -165,7 +202,7 @@ function apply(S, me, a) {
       if (c.kid && c.kid !== k.id && !((S.orders || {})[k.id] || []).includes(c.id)) throw new Oops("That mission belongs to someone else");
       const key = doneKey(k.id, c.id);
       if (S.done[key]) throw new Oops(S.done[key] === "p" ? "Already waiting for approval" : "Already done today. Try again tomorrow!");
-      const m = motd(S), x2 = !!a.x2 && m && m.id === c.id, pts = c.xp * (x2 ? 2 : 1);
+      const deal = (S.deals || {})[k.id + "|" + c.id], m = motd(S), x2 = deal == null && !!a.x2 && m && m.id === c.id, pts = deal != null ? deal : c.xp * (x2 ? 2 : 1);
       if (!isParent && S.settings.approve) {
         S.pending.push({ id: "p" + (++S.seq), type: "chore", kid: k.id, chore: c.id, name: c.name, pts, x2, key, at: Date.now() });
         S.done[key] = "p";
@@ -207,14 +244,72 @@ function apply(S, me, a) {
       if (Array.isArray(c.rewards)) S.rewards = cleanRewards(c.rewards);
       return { status: "saved" };
     }
+    case "game_start": {
+      needParent();
+      const mode = ["draft", "auction", "bounty"].includes(a.mode) ? a.mode : null; if (!mode) throw new Oops("Pick a game");
+      const kids = S.kids.filter(k => (a.kids || []).includes(k.id)).map(k => k.id);
+      if (!kids.length) throw new Oops("Pick at least one cadet to play");
+      const pool = S.chores.filter(c => (a.chores || []).includes(c.id)).sort((x, y) => y.xp - x.xp || x.name.localeCompare(y.name)).map(c => c.id);
+      if (!pool.length) throw new Oops("Pick at least one chore");
+      if (a.replace) { S.orders = {}; S.deals = {}; }
+      for (const id of pool) S.chores.find(c => c.id === id).off = false;
+      const now = Date.now(), order = [...kids];
+      for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
+      S.game = { id: "g" + (++S.seq), mode, status: "live", by: me.name, started: now, kids, pool, results: [], unsold: [], order, turn: 0, lot: null };
+      if (mode === "auction") nextLot(S, S.game, now);
+      return { status: "started" };
+    }
+    case "game_pick": {
+      const g = S.game, now = Date.now();
+      if (!g || g.status !== "live" || g.mode === "auction") throw new Oops("There's no pick right now");
+      const c = S.chores.find(c => c.id === a.chore);
+      if (!c || !g.pool.includes(c.id)) throw new Oops("Someone already took that one", 409);
+      if (g.mode === "draft") {
+        const turnKid = snakeKid(g);
+        if (!isParent && me.id !== turnKid) throw new Oops(`It's ${kidName(S, turnKid)}'s pick`, 409);
+        winChore(S, g, c.id, turnKid, c.xp, now); g.turn++;
+        return { status: "picked", kid: turnKid, stars: c.xp };
+      }
+      const k = kidFor(a.kid); if (!g.kids.includes(k.id)) throw new Oops(`${k.name} isn't playing this round`);
+      const stars = bountyPrice(g, c, now); winChore(S, g, c.id, k.id, stars, now);
+      return { status: "grabbed", kid: k.id, stars };
+    }
+    case "game_bid": {
+      const g = S.game, now = Date.now();
+      if (!g || g.status !== "live" || g.mode !== "auction" || !g.lot) throw new Oops("Nothing is up for bid right now", 409);
+      const k = kidFor(a.kid); if (!g.kids.includes(k.id)) throw new Oops(`${k.name} isn't playing this round`);
+      const lot = g.lot, floor = Math.ceil(lot.start / 2), price = int(a.price, 0, 1000, -1);
+      if (lot.leader === k.id) throw new Oops(`${k.name} is already winning this one`, 409);
+      const max = lot.leader ? lot.price - 1 : lot.start;
+      if (max < floor) throw new Oops(`Nobody can go lower than ${floor} stars. ${kidName(S, lot.leader)} has it.`, 409);
+      if (price < floor) throw new Oops(`Bids can't go below ${floor} stars`);
+      if (price > max) throw new Oops(lot.leader ? `Bid ${max} or less to beat ${kidName(S, lot.leader)}` : `Bid ${max} or less`, 409);
+      Object.assign(lot, { price, leader: k.id, ends: now + BID_MS, bids: lot.bids + 1 });
+      return { status: "bid", price };
+    }
+    case "game_skip": {
+      needParent();
+      const g = S.game, now = Date.now();
+      if (!g || g.status !== "live") throw new Oops("No game is running");
+      if (g.mode === "draft") { g.turn++; return { status: "skipped" }; }
+      if (g.mode === "auction" && g.lot) { g.lot.ends = now; gameTick(S, now); return { status: "closed" }; }
+      throw new Oops("Nothing to skip in this game");
+    }
+    case "game_end": { needParent(); if (S.game && S.game.status === "live") finishGame(S.game, Date.now()); return { status: "ended" }; }
+    case "game_close": { needParent(); delete S.game; return { status: "closed" }; }
     case "orders": {
       needParent();
       S.orders = S.orders || {};
-      if (a.clear) { if (a.kid) delete S.orders[a.kid]; else S.orders = {}; return { status: "cleared" }; }
+      S.deals = S.deals || {};
+      if (a.clear) {
+        if (a.kid) { delete S.orders[a.kid]; for (const d of Object.keys(S.deals)) if (d.startsWith(a.kid + "|")) delete S.deals[d]; }
+        else { S.orders = {}; S.deals = {}; }
+        return { status: "cleared" };
+      }
       const k = S.kids.find(k => k.id === a.kid); if (!k) throw new Oops("Pick a cadet");
       const c = S.chores.find(c => c.id === a.chore); if (!c) throw new Oops("That mission isn't on the list anymore");
       const list = (S.orders[k.id] || []).filter(id => id !== c.id);
-      if (a.on) { list.push(c.id); c.off = false; } // requiring a mission switches it on
+      if (a.on) { list.push(c.id); c.off = false; } else delete S.deals[k.id + "|" + c.id]; // requiring a mission switches it on
       if (list.length) S.orders[k.id] = list; else delete S.orders[k.id];
       return { status: a.on ? "required" : "removed" };
     }
@@ -276,7 +371,7 @@ async function auth(db, request) {
   return { me, st, hash: await sha(t) };
 }
 async function stateReply(db, me, st, extra) {
-  const out = { rev: st.rev, state: st.v, me, ...extra };
+  const out = { rev: st.rev, state: st.v, me, now: Date.now(), ...extra };
   if (me.role === "parent") { const u = await getKV(db, "users"); out.pins = Object.fromEntries(Object.keys(u?.v || {}).map(k => [k, true])); }
   return json(out);
 }
@@ -342,15 +437,21 @@ export async function onRequest({ request, env, params }) {
       return json({ ok: true });
     }
     if (route === "state" && method === "GET") {
+      let cur = st;
+      if (gameTick(cur.v, Date.now())) {
+        const r = await db.prepare("UPDATE kv SET v = ?, rev = rev + 1 WHERE k = 'state' AND rev = ?").bind(JSON.stringify(cur.v), cur.rev).run();
+        cur = r.meta.changes === 1 ? { v: cur.v, rev: cur.rev + 1 } : await getKV(db, "state");
+      }
       const since = +new URL(request.url).searchParams.get("since");
-      if (since && since === st.rev) return json({ same: true, rev: st.rev });
-      return stateReply(db, me, st);
+      if (since && since === cur.rev) return json({ same: true, rev: cur.rev });
+      return stateReply(db, me, cur);
     }
     if (route === "act" && method === "POST") {
       const a = await readBody(request);
       for (let tries = 0; tries < 4; tries++) {
         const cur = tries ? await getKV(db, "state") : st;
         const S = cur.v, t = today();
+        gameTick(S, Date.now());
         const result = apply(S, me, a);
         for (const k of Object.keys(S.done)) if (!k.startsWith(t + "|")) delete S.done[k];
         if (S.orders) for (const kid of Object.keys(S.orders)) {
